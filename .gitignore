@@ -9,6 +9,8 @@ yarn.lock
 .vercel
 .output
 .vinxi
+.nitro
+.tanstack-start
 
 output.txt
 dist

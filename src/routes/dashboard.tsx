@@ -1,6 +1,5 @@
 
 
-
 import { ProtectedRoute } from '~/components/auth/protected-route'
 import { useAuth } from '~/components/auth/auth-provider'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
