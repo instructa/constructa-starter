@@ -6,9 +6,10 @@ alwaysApply: true
 # Main Project Rules
 
 - Always get recommendation and best practice considering latest NOW date
-
 - Never use `npx shadcn-ui@latest`! Always use `npx shadcn@latest`.
 - Always use pnpm as the package manager.
 - All route files must be written in **TypeScript React** (`.tsx`).
-- Use alias imports: `@` resolves to root `./`.
+- Use alias imports: `~` resolves to root `./src`.
 - Don't use default exports in route files.
+- If a file might ever ship to the browser, read env vars with import.meta.env; only reach for process.env in code that’s guaranteed to run exclusively on the server.
+- Never update .env file, update the .env.example instead

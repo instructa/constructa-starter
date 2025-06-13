@@ -1,3 +1,4 @@
+;
 import { useAuth } from "~/components/auth/auth-provider";
 import { ProtectedRoute } from "~/components/auth/protected-route";
 import AssistantChat from "~/components/chat/assistant-chat";

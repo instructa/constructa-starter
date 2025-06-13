@@ -11,5 +11,16 @@ services:
       - "5432:5432"
     volumes:
       - ex0-data:/var/lib/postgresql/data
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: ex0-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    environment:
+      MH_STORAGE: memory
+
 volumes:
   ex0-data:
