@@ -2,7 +2,7 @@ import { Outlet, redirect } from "@tanstack/react-router";
 import { AppSidebar } from "~/components/app-sidebar";
 import { SiteHeader } from "~/components/site-header";
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
-import { getSession } from "~/server/auth";
+import { getSession } from "~/server/function/auth.server.func";
 
 export const Route = createFileRoute({
 	// All children (/dashboard, /dashboard/settings, etc.) inherit this guard

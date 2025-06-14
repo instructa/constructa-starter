@@ -1,4 +1,4 @@
-import { Link, Outlet } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import { cn } from '~/lib/utils';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -10,10 +10,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <nav className="space-y-1 px-2">
           <Link
             to="/dashboard"
-            className={({ isActive }) =>
+            className={({ isActive }: { isActive: boolean }) =>
               cn(
                 'block rounded-md px-3 py-2 text-sm transition-colors',
-                isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               )
             }
             end

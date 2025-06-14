@@ -117,8 +117,6 @@ Standard project scripts are available via `pnpm <script-name>`.
 | `db:pull`          | Pull database schema using Drizzle Kit           | `npx drizzle-kit pull`                                                                   |
 | `db:generate`      | Generate Drizzle migrations/schema changes       | `npx drizzle-kit generate`                                                               |
 | `db:migrate`       | Apply Drizzle migrations                         | `npx drizzle-kit migrate`                                                                |
-| `biome:fix:unsafe` | Fix code style issues (includes unsafe fixes)    | `biome check --fix --unsafe`                                                             |
-| `biome:check`      | Check code style issues                          | `biome check`                                                                            |
 | `auth:init`        | Generate Better Auth schema                      | `npx -y @better-auth/cli@latest generate --config src/server/auth.ts --output src/server/db/auth.schema.ts` |
 | `ex0`              | Run the custom project CLI                       | `tsx cli/index.ts`                                                                       |
 

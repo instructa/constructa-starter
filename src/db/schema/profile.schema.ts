@@ -1,10 +1,13 @@
-import { boolean, jsonb, pgTable, primaryKey, text } from 'drizzle-orm/pg-core';
+import { boolean, pgTable, text } from 'drizzle-orm/pg-core';
 
 import { timestamps, timestamptz } from './_shared';
 import { user } from './auth.schema';
 
 export const profile = pgTable('profile', {
-  id: text('id').primaryKey().notNull().references(() => user.id, { onDelete: 'cascade' }),
+  id: text('id')
+    .primaryKey()
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
   username: text('username').unique(),
   email: text('email'),
 
