@@ -1,6 +1,5 @@
 import { AuthCard } from "@daveyplate/better-auth-ui";
-import {,} from "@tanstack/react-router";
-import { useSearch } from "@tanstack/react-router";
+import {, useSearch } from "@tanstack/react-router";
 
 export const Route = createFileRoute({
 	component: RouteComponent,

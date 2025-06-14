@@ -6,6 +6,7 @@ import {
 	UserCircle,
 } from "lucide-react";
 
+import { useRouter } from "@tanstack/react-router";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -33,6 +34,14 @@ export function NavUser({
 	};
 }) {
 	const { isMobile } = useSidebar();
+	const router = useRouter();
+
+	const handleLogout = () => {
+		router.navigate({
+			to: "/auth/$pathname",
+			params: { pathname: "sign-out" },
+		});
+	};
 
 	return (
 		<SidebarMenu>
@@ -92,7 +101,7 @@ export function NavUser({
 							</DropdownMenuItem>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem>
+						<DropdownMenuItem onClick={handleLogout}>
 							<LogOut />
 							Log out
 						</DropdownMenuItem>

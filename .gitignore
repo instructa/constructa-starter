@@ -30,3 +30,4 @@ node_modules
 output.txt
 package-lock.json
 yarn.lock
+dev_docs

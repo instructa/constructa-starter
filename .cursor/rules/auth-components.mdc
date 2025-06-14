@@ -3,6 +3,90 @@ description:
 globs: src/components/**/*.tsx,src/routes/**/*.tsx
 alwaysApply: false
 ---
-# Authentication Components Rule
+# Better Auth UI Components Cursor Rule
 
-When working with components or routes in this project, always reference the Better Auth UI documentation at `dev_docs/better-auth-ui/better-auth-ui-component.md` for proper implementation of authentication-related components.
+## Overview
+When working with authentication in this project, use the `@daveyplate/better-auth-ui` library components and hooks. This library provides a comprehensive set of React components for authentication flows.
+
+## Core Setup
+
+### AuthUIProvider
+- Always wrap the application with `<AuthUIProvider>` at the root level
+- Required props: `authClient`, `navigate`, `replace`
+- Optional but recommended: `onSessionChange`, `Link`
+- Example setup:
+```tsx
+<AuthUIProvider
+  authClient={authClient}
+  navigate={router.push}
+  replace={router.replace}
+  onSessionChange={() => router.refresh()}
+  Link={Link}
+>
+  {children}
+</AuthUIProvider>
+```
+
+## Authentication Components
+
+### AuthCard
+- Use `<AuthCard />` for complete authentication UI (sign in/up, magic links, passkeys, social providers)
+- Supports customization via `view`, `redirectTo`, `localization`, and `classNames` props
+- Place in centered container for best UX
+
+### Conditional Rendering
+- Use `<SignedIn>` to show content only to authenticated users
+- Use `<SignedOut>` to show content only to unauthenticated users  
+- Use `<AuthLoading>` to show loading state during authentication
+
+### User Components
+- `<UserAvatar />` - Shows user avatar with initials fallback
+- `<UserButton />` - Dropdown with user info and actions (size: "icon" | "full")
+
+## Protection & Redirection
+
+### Hooks
+- `useAuthenticate()` - Protects pages by redirecting unauthenticated users
+- Options: `authView` ("signIn" | "signUp"), `enabled` (boolean)
+
+### Redirect Components
+- `<RedirectToSignIn />` - Auto-redirects to sign-in
+- `<RedirectToSignUp />` - Auto-redirects to sign-up
+
+## Settings Components
+
+### SettingsCards
+- Use `<SettingsCards />` for complete user settings UI
+- Automatically uses features enabled in AuthUIProvider
+- Customize with `className` and `classNames` props
+
+### Individual Settings Cards
+- `<ChangeEmailCard />` - Email change with verification
+- `<ChangePasswordCard />` - Password updates (handles social provider users)
+- `<DeleteAccountCard />` - Account deletion with verification
+- `<ProvidersCard />` - Manage linked social providers
+- `<SessionsCard />` - View/manage active sessions
+- `<TwoFactorCard />` - 2FA setup with QR codes and backup codes
+- `<UpdateAvatarCard />` - Avatar management (base64 or custom uploader)
+- `<UpdateUsernameCard />` - Username updates
+- `<APIKeysCard />` - API key management (requires API Key plugin)
+
+## Organization Components (when organization plugin enabled)
+- `<OrganizationSwitcher>` - Switch between orgs and personal accounts
+- `<OrganizationMembersCard>` - Manage org members
+- `<OrganizationSettingsCards>` - Org settings (logo, name, slug)
+- `<AcceptInvitationCard>` - Handle invitation acceptance flow
+
+## Email Templates (Server-side)
+- Use `<EmailTemplate />` from `@daveyplate/better-auth-ui/server`
+- Props: `action`, `content`, `heading`, `siteName`, `baseUrl`, `url`
+- Use with email providers like Resend for authentication emails
+
+## Best Practices
+1. Always use TypeScript React (`.tsx`) for auth components
+2. Place authentication UI in dedicated routes (e.g., `/auth/sign-in`)
+3. Use conditional rendering components for navigation elements
+4. Protect sensitive pages with `useAuthenticate()` or redirect components
+5. Customize styling with TailwindCSS classes via `classNames` prop
+6. Handle session changes with `onSessionChange` callback in provider
+7. Use server-side EmailTemplate for authentication emails
