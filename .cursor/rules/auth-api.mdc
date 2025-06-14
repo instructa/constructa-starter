@@ -1,9 +1,166 @@
 ---
 description: 
-globs: 
+globs: src/routes/**/*.tsx,src/components/**/*.tsx,src/lib/**/*.ts,src/hooks/**/*.ts,src/app/**/*.tsx
 alwaysApply: false
 ---
-# Authentication API Reference Rule
+# Better Auth UI API Cursor Rule
 
-When working with Better Auth UI API, hooks, mutations, and customization, always reference the API documentation at `dev_docs/better-auth-ui/better-auth-ui-api-reference.md` for proper implementation.
+## Overview
+This rule provides guidance on using the Better Auth UI library's API, hooks, and customization options for building authentication systems.
 
+## Core Providers & Components
+
+### AuthUIProvider
+The main provider that wraps your authentication system.
+
+**Props:**
+- `authClient` - The authentication client instance (required)
+- `additionalFields` - Custom fields for sign-up/settings
+- `localization` - Text customization and internationalization
+- `authViewPaths` - Custom URL paths for auth views
+
+### AuthView Component
+Renders different authentication views dynamically.
+
+### AuthCard Component
+Container component for authentication forms.
+
+## Authentication Hooks (AuthHooks)
+
+### Session Management
+- `useSession()` - Get current user session
+- `useIsRestoring()` - Check if session is being restored (returns boolean)
+
+### Authorization
+- `useHasPermission(params)` - Check if user has specific permission
+
+### Organization Management
+- `useListOrganizations()` - List all available organizations
+- `useActiveOrganization()` - Get the currently active organization
+- `useInvitation(params)` - Handle organization invitations
+
+### Security Features
+- `useListApiKeys()` - List user's API keys
+- `useListPasskeys()` - List user's passkeys (WebAuthn)
+- `useListSessions()` - List all active sessions
+- `useListDeviceSessions()` - List sessions for current device
+
+### Account Management
+- `useListAccounts()` - List linked accounts (OAuth providers)
+
+## Authentication Mutations (AuthMutators)
+
+Functions for modifying authentication state:
+- Update user information
+- Revoke sessions
+- Manage authentication factors
+- Handle account operations
+
+## Customization Options
+
+### Custom Fields (AdditionalField)
+
+Add custom fields to sign-up forms and user settings:
+
+```tsx
+const additionalFields = {
+  age: {
+    label: "Age",
+    type: "number",
+    required: true,
+  },
+  newsletter: {
+    label: "Newsletter Opt-In",
+    type: "boolean",
+  },
+  company: {
+    label: "Company Name",
+    type: "text",
+    required: false,
+  }
+}
+
+// Pass to AuthUIProvider
+<AuthUIProvider 
+  authClient={authClient}
+  additionalFields={additionalFields}
+  // ... other props
+/>
+```
+
+### Localization (AuthLocalization)
+
+Customize all UI text and messages by passing an `AuthLocalization` object:
+- Error messages
+- Form labels
+- Button text
+- Success messages
+- Validation messages
+
+### Custom Routes (AuthViewPaths)
+
+Override default authentication routes:
+
+```tsx
+const authViewPaths = {
+  signIn: "/login",
+  signUp: "/register",
+  forgotPassword: "/forgot",
+  resetPassword: "/reset",
+  settings: "/account",
+  // ... other paths
+}
+```
+
+### Styling with ClassNames
+
+Components that support className customization:
+- `AuthCard` - Use `AuthCardClassNames` interface
+- `AuthForm` - Use `AuthFormClassNames` interface
+- `EmailTemplate` - Use `EmailTemplateClassNames` interface
+- `SettingsCard` - Use `SettingsCardClassNames` interface
+- `SettingsCards` - Use `SettingsCardsClassNames` interface
+- `UserAvatar` - Use `UserAvatarClassNames` interface
+- `UserButton` - Use `UserButtonClassNames` interface
+
+Example:
+```tsx
+const authCardClassNames = {
+  root: "custom-card-root",
+  header: "custom-card-header",
+  body: "custom-card-body",
+  // ... other class overrides
+}
+
+<AuthCard classNames={authCardClassNames} />
+```
+
+## Type Definitions
+
+### Core Types
+- `Profile` - User profile data structure
+- `FetchError` - Error object shape from API/auth requests
+- `ModelNames` - Database model name mappings (for InstantDB, Triplit)
+
+### AuthView Enum
+Available authentication views:
+- `"signIn"` - Sign in form
+- `"signUp"` - Sign up form
+- `"magicLink"` - Magic link request
+- `"emailOTP"` - Email one-time password
+- `"forgotPassword"` - Password reset request
+- `"resetPassword"` - Password reset form
+- `"signOut"` - Sign out action
+- `"settings"` - User settings
+- `"callback"` - OAuth callback handler
+
+## Best Practices
+
+1. **Always wrap with AuthUIProvider** - All hooks and components require this provider
+2. **Type safety** - Use TypeScript interfaces for all customization objects
+3. **Error handling** - Wrap auth operations in try-catch blocks
+4. **Loading states** - Use `useIsRestoring()` to show loading UI
+5. **Permission checks** - Use `useHasPermission()` before rendering protected content
+6. **Custom fields validation** - Implement proper validation for additional fields
+7. **Localization** - Provide complete localization objects for better UX
+8. **Consistent styling** - Use classNames props for theme consistency
