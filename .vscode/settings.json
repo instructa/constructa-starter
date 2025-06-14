@@ -1,34 +1,41 @@
 {
-    "editor.codeActionsOnSave": {
-        "source.fixAll.biome": "explicit"
-    },
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "biomejs.biome",
-    "[javascript]": {
-        "editor.defaultFormatter": "biomejs.biome"
-    },
-    "[javascriptreact]": {
-        "editor.defaultFormatter": "biomejs.biome"
-    },
-    "[typescript]": {
-        "editor.defaultFormatter": "biomejs.biome"
-    },
-    "[typescriptreact]": {
-        "editor.defaultFormatter": "biomejs.biome"
-    },
-    "[json]": {
-        "editor.defaultFormatter": "biomejs.biome"
-    },
-    "[jsonc]": {
-        "editor.defaultFormatter": "biomejs.biome"
-    },
-    "files.watcherExclude": {
-        "**/routeTree.gen.ts": true
-    },
-    "search.exclude": {
-        "**/routeTree.gen.ts": true
-    },
-    "files.readonlyInclude": {
-        "**/routeTree.gen.ts": true
-    }
+	"editor.codeActionsOnSave": {
+		"source.fixAll.biome": "explicit"
+	},
+	"editor.formatOnSave": true,
+	"editor.defaultFormatter": "biomejs.biome",
+	"[javascript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[javascriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"files.watcherExclude": {
+		"**/routeTree.gen.ts": true,
+		"**/.tanstack/**/*": true,
+		"pnpm-lock.yaml": true
+	},
+	"search.exclude": {
+		"**/routeTree.gen.ts": true,
+		"**/.tanstack/**/*": true,
+		"pnpm-lock.yaml": true
+	},
+	"files.readonlyInclude": {
+		"**/routeTree.gen.ts": true,
+		"**/.tanstack/**/*": true,
+		"pnpm-lock.yaml": true
+	},
+	"typescript.tsdk": "./node_modules/typescript/lib"
 }

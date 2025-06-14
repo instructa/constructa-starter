@@ -13,6 +13,7 @@ import {
 import { Toaster } from "sonner";
 import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary";
 import { NotFound } from "~/components/NotFound";
+import { ThemeInitScript } from "~/components/theme-init-script";
 import { ThemeProvider } from "~/components/theme-provider";
 import { authClient } from "~/lib/auth-client";
 import { getTheme } from "~/lib/theme";
@@ -95,21 +96,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en" className={initial === "system" ? "" : initial}>
 			<head>
-				<script
-					// runs before the CSS is parsed, so there is no flash
-					dangerouslySetInnerHTML={{
-						__html: `
-                        (function () {
-                        try {
-                            var t = localStorage.getItem("vite-ui-theme");
-                            if (!t) return;
-                            if (t === "light" || t === "dark") {
-                            document.documentElement.classList.add(t);
-                            }
-                        } catch {}
-                        })();`,
-					}}
-				/>
+				{/* Early theme application – prevents FOUC without react/no-danger noise */}
+				<ThemeInitScript />
 				<HeadContent />
 			</head>
 			<body className="">

@@ -1,0 +1,42 @@
+# Unified Rules for Project
+
+This file contains all AI assistant rules for this project.
+Use vibe-rules to sync these to different editors.
+
+<main-project-rules>
+# Main Project Rules
+
+- Always get recommendation and best practice considering latest NOW date
+- Never use `npx shadcn-ui@latest`! Always use `npx shadcn@latest`.
+- Always use pnpm as the package manager.
+- All route files must be written in **TypeScript React** (`.tsx`).
+- Use alias imports: `~` resolves to root `./src`.
+- Don't use default exports in route files.
+- If a file might ever ship to the browser, read env vars with import.meta.env
+- Never update .env file, update the .env.example instead
+</main-project-rules>
+
+<auth-api>
+# Authentication API Reference Rule
+
+When working with Better Auth UI API, hooks, mutations, and customization, 
+always reference the API documentation at `dev_docs/better-auth-ui/better-auth-ui-api-reference.md` 
+for proper implementation.
+</auth-api>
+
+<development-workflow>
+# Development Workflow Rules
+
+- Never ask: "Would you like me to make this change for you?". Just do it.
+- Always use pnpm as package manager
+- Create a new branch with git new (not git checkout/switch)
+- When installing packages with pnpm always use `pnpm add <packagename>@latest`
+- Dev server is already running. Never start it
+- Use "docker compose" command not "docker-compose"
+</development-workflow>
+
+<database-schema>
+# Database Schema Location
+
+Database schema files are located at: src/database/schema/*.ts
+</database-schema> 

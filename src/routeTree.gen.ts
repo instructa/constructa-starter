@@ -14,8 +14,9 @@ import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as DocsRouteImport } from './routes/docs'
-import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as marketingRouteRouteImport } from './routes/(marketing)/route'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as marketingIndexRouteImport } from './routes/(marketing)/index'
 import { Route as AuthPathnameRouteImport } from './routes/auth/$pathname'
 
@@ -27,7 +28,7 @@ const DocsRoute = DocsRouteImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const DashboardRoute = DashboardRouteImport.update({
+const DashboardRouteRoute = DashboardRouteRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => rootRoute,
@@ -36,6 +37,12 @@ const DashboardRoute = DashboardRouteImport.update({
 const marketingRouteRoute = marketingRouteRouteImport.update({
   id: '/(marketing)',
   getParentRoute: () => rootRoute,
+} as any)
+
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardRouteRoute,
 } as any)
 
 const marketingIndexRoute = marketingIndexRouteImport.update({
@@ -65,7 +72,7 @@ declare module '@tanstack/react-router' {
       id: '/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
+      preLoaderRoute: typeof DashboardRouteRouteImport
       parentRoute: typeof rootRoute
     }
     '/docs': {
@@ -89,6 +96,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof marketingIndexRouteImport
       parentRoute: typeof marketingRouteRouteImport
     }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRouteRouteImport
+    }
   }
 }
 
@@ -103,7 +117,7 @@ declare module './routes/(marketing)/route' {
     FileRoutesByPath['/(marketing)']['fullPath']
   >
 }
-declare module './routes/dashboard' {
+declare module './routes/dashboard/route' {
   const createFileRoute: CreateFileRoute<
     '/dashboard',
     FileRoutesByPath['/dashboard']['parentRoute'],
@@ -139,6 +153,15 @@ declare module './routes/(marketing)/index' {
     FileRoutesByPath['/(marketing)/']['fullPath']
   >
 }
+declare module './routes/dashboard/index' {
+  const createFileRoute: CreateFileRoute<
+    '/dashboard/',
+    FileRoutesByPath['/dashboard/']['parentRoute'],
+    FileRoutesByPath['/dashboard/']['id'],
+    FileRoutesByPath['/dashboard/']['path'],
+    FileRoutesByPath['/dashboard/']['fullPath']
+  >
+}
 
 // Create and export the route tree
 
@@ -154,34 +177,48 @@ const marketingRouteRouteWithChildren = marketingRouteRoute._addFileChildren(
   marketingRouteRouteChildren,
 )
 
+interface DashboardRouteRouteChildren {
+  DashboardIndexRoute: typeof DashboardIndexRoute
+}
+
+const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
+  DashboardIndexRoute: DashboardIndexRoute,
+}
+
+const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
+  DashboardRouteRouteChildren,
+)
+
 export interface FileRoutesByFullPath {
   '/': typeof marketingIndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteRouteWithChildren
   '/docs': typeof DocsRoute
   '/auth/$pathname': typeof AuthPathnameRoute
+  '/dashboard/': typeof DashboardIndexRoute
 }
 
 export interface FileRoutesByTo {
-  '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
   '/auth/$pathname': typeof AuthPathnameRoute
   '/': typeof marketingIndexRoute
+  '/dashboard': typeof DashboardIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/(marketing)': typeof marketingRouteRouteWithChildren
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteRouteWithChildren
   '/docs': typeof DocsRoute
   '/auth/$pathname': typeof AuthPathnameRoute
   '/(marketing)/': typeof marketingIndexRoute
+  '/dashboard/': typeof DashboardIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/docs' | '/auth/$pathname'
+  fullPaths: '/' | '/dashboard' | '/docs' | '/auth/$pathname' | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/dashboard' | '/docs' | '/auth/$pathname' | '/'
+  to: '/docs' | '/auth/$pathname' | '/' | '/dashboard'
   id:
     | '__root__'
     | '/(marketing)'
@@ -189,19 +226,20 @@ export interface FileRouteTypes {
     | '/docs'
     | '/auth/$pathname'
     | '/(marketing)/'
+    | '/dashboard/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   marketingRouteRoute: typeof marketingRouteRouteWithChildren
-  DashboardRoute: typeof DashboardRoute
+  DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
   DocsRoute: typeof DocsRoute
   AuthPathnameRoute: typeof AuthPathnameRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   marketingRouteRoute: marketingRouteRouteWithChildren,
-  DashboardRoute: DashboardRoute,
+  DashboardRouteRoute: DashboardRouteRouteWithChildren,
   DocsRoute: DocsRoute,
   AuthPathnameRoute: AuthPathnameRoute,
 }
@@ -229,7 +267,10 @@ export const routeTree = rootRoute
       ]
     },
     "/dashboard": {
-      "filePath": "dashboard.tsx"
+      "filePath": "dashboard/route.tsx",
+      "children": [
+        "/dashboard/"
+      ]
     },
     "/docs": {
       "filePath": "docs.tsx"
@@ -240,6 +281,10 @@ export const routeTree = rootRoute
     "/(marketing)/": {
       "filePath": "(marketing)/index.tsx",
       "parent": "/(marketing)"
+    },
+    "/dashboard/": {
+      "filePath": "dashboard/index.tsx",
+      "parent": "/dashboard"
     }
   }
 }

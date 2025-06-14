@@ -1,4 +1,4 @@
-import { SignedIn, SignedOut, UserButton } from "@daveyplate/better-auth-ui";
+import { SignedIn, SignedOut } from "@daveyplate/better-auth-ui";
 import { Link } from "@tanstack/react-router";
 import { ModeToggle } from "./mode-toggle";
 import { Button } from "./ui/button";

@@ -12,8 +12,6 @@ export const auth = betterAuth({
 		provider: "pg",
 	}),
 	plugins: [reactStartCookies()],
-	secret: process.env.BETTER_AUTH_SECRET || "your-secret-key-here",
-	baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
 	emailAndPassword: {
 		enabled: true,
 		requireEmailVerification: process.env.ENABLE_EMAIL_VERIFICATION === "true",

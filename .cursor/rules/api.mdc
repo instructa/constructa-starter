@@ -3,10 +3,9 @@ description:
 globs: src/routes/api/*.ts,src/routes/api/**/*.ts
 alwaysApply: false
 ---
-- Every HTTP endpoint must be declared with createServerFileRoute from @tanstack/react-start/server and exported as ServerRoute. No other import or export names are permitted.
+HTTP endpoints use `createServerFileRoute` from `@tanstack/react-start/server` exported as `ServerRoute`.
 
-Required pattern:
-```
+```typescript
 import { json } from "@tanstack/react-start";
 import { createServerFileRoute } from "@tanstack/react-start/server";
 
@@ -23,11 +22,4 @@ export const ServerRoute = createServerFileRoute("/api/widgets").methods({
 });
 ```
 
-Forbidden patterns:
-```
-// ❌ Old helper
-import { createAPIFileRoute } from "@tanstack/react-start/api";
-
-// ❌ Wrong export name
-export const APIRoute = createServerFileRoute("/api/widgets");
-```
+❌ Don't: `createAPIFileRoute`, export as `APIRoute`, or use other import sources

@@ -1,0 +1,8 @@
+---
+description: 
+globs: src/components/**/*.tsx,src/routes/**/*.tsx
+alwaysApply: false
+---
+# Authentication Components Rule
+
+When working with components or routes in this project, always reference the Better Auth UI documentation at `dev_docs/better-auth-ui/better-auth-ui-component.md` for proper implementation of authentication-related components.
