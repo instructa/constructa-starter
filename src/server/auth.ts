@@ -1,3 +1,5 @@
+import { createServerFn } from "@tanstack/react-start";
+import { getHeaders } from "@tanstack/react-start/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { reactStartCookies } from "better-auth/react-start";
@@ -69,8 +71,43 @@ export const auth = betterAuth({
 export default auth;
 
 /**
- * Get session or null from request headers
+ * Server function to get the current session
  * Verifies cookie, checks token expiry, and handles refresh tokens
+ */
+export const getSession = createServerFn({ method: "GET" }).handler(
+	async () => {
+		try {
+			// Get headers from the current request context
+			const headers = getHeaders();
+
+			const session = await auth.api.getSession({
+				headers: headers,
+			});
+
+			if (!session?.user) {
+				return null;
+			}
+
+			// Strip unnecessary fields before returning
+			return {
+				user: {
+					id: session.user.id,
+					email: session.user.email,
+					name: session.user.name,
+					image: session.user.image,
+					emailVerified: session.user.emailVerified,
+				},
+			};
+		} catch (error) {
+			console.error("Session verification failed:", error);
+			return null;
+		}
+	},
+);
+
+/**
+ * Get session or null from request headers
+ * @deprecated Use getSession server function instead
  */
 export async function getSessionOrNull(request: Request) {
 	try {

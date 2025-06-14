@@ -1,18 +1,24 @@
 import { AuthCard } from "@daveyplate/better-auth-ui";
-import {, useSearch } from "@tanstack/react-router";
+import { } from "@tanstack/react-router";
+import { z } from "zod";
+
+const searchSchema = z.object({
+	redirect: z.string().optional(),
+});
 
 export const Route = createFileRoute({
+	validateSearch: searchSchema,
 	component: RouteComponent,
 });
 
 function RouteComponent() {
 	const { pathname } = Route.useParams();
-	const search = useSearch({ from: "/auth/$pathname" });
-	const redirect = (search as any)?.redirect || "/dashboard";
+	const { redirect } = Route.useSearch();
+	const callbackURL = redirect || "/dashboard";
 
 	return (
 		<main className="flex grow flex-col items-center justify-center gap-4 p-4">
-			<AuthCard pathname={pathname} callbackURL={redirect} />
+			<AuthCard pathname={pathname} callbackURL={callbackURL} />
 		</main>
 	);
 }

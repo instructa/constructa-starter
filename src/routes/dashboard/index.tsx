@@ -3,8 +3,6 @@ import {
 	RedirectToSignIn,
 	SignedIn,
 } from "@daveyplate/better-auth-ui";
-import { redirect } from "@tanstack/react-router";
-import {} from "@tanstack/react-router";
 
 export const Route = createFileRoute({
 	component: RouteComponent,
