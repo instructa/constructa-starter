@@ -3,6 +3,9 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { reactStartCookies } from 'better-auth/react-start';
 import { db } from '~/db/db-config';
 import { sendEmail } from './email';
+import { randomUUID } from "crypto" // new – for CSRF token fallback
+
+const isProd = process.env.NODE_ENV === "production";
 
 const isEmailVerificationEnabled = process.env.ENABLE_EMAIL_VERIFICATION === 'true';
 
@@ -10,7 +13,18 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
   }),
-  plugins: [reactStartCookies()],
+	plugins: [
+	reactStartCookies({
+		// 1️⃣  Secure session cookie options
+		cookieName: process.env.SESSION_COOKIE_NAME ?? "ex0_session",
+		cookieOptions: {
+		httpOnly: true,
+		secure: isProd,
+		sameSite: "lax",
+		path: "/",
+		},
+	}),
+	],
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: isEmailVerificationEnabled,

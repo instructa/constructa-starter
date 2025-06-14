@@ -68,24 +68,15 @@ export class SMTPProvider implements EmailProvider {
 }
 
 export class ConsoleProvider implements EmailProvider {
-  async sendEmail({
-    from,
-    to,
-    subject,
-    html,
-  }: {
-    from: string;
-    to: string;
-    subject: string;
-    html: string;
-  }) {
+  async sendEmail({ from, to, subject, html }: { from: string; to: string; subject: string; html: string; }) {
     /* eslint-disable no-console */
-    console.log('=== EMAIL (Console Provider) ===');
+    console.log("=== EMAIL (Console Provider) ===");
     console.log(`From: ${from}`);
     console.log(`To: ${to}`);
     console.log(`Subject: ${subject}`);
-    console.log(`HTML: ${html}`);
-    console.log('================================');
+    // Do NOT print the full HTML; it may contain one‑time tokens.
+    console.log("HTML: [redacted for security]");
+    console.log("================================");
   }
 }
 

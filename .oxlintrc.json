@@ -19,7 +19,6 @@
       }
     }
   ],
-
   "ignorePatterns": [
     "dist",
     "build",
