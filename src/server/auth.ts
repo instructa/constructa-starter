@@ -67,3 +67,24 @@ export const auth = betterAuth({
 });
 
 export default auth;
+
+/**
+ * Get session or null from request headers
+ * Verifies cookie, checks token expiry, and handles refresh tokens
+ */
+export async function getSessionOrNull(request: Request) {
+	try {
+		const session = await auth.api.getSession({
+			headers: request.headers,
+		});
+
+		if (!session?.user) {
+			return null;
+		}
+
+		return session;
+	} catch (error) {
+		console.error("Session verification failed:", error);
+		return null;
+	}
+}
