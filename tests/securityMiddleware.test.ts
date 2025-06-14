@@ -41,13 +41,9 @@ const mockNext = vi.fn().mockResolvedValue(new Response('OK', { status: 200 }));
 describe('Security Middleware', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.resetModules();
 
     // Reset environment variables
     process.env.NODE_ENV = 'development';
-
-    // Clear rate limit buckets
-    // Since buckets is module-scoped, we need to reimport the module
   });
 
   describe('CSRF Protection', () => {
@@ -141,7 +137,8 @@ describe('Security Middleware', () => {
 
   describe('Rate Limiting', () => {
     it('should rate limit auth endpoints after threshold', async () => {
-      // Make multiple requests from same IP
+      // Make multiple requests from same IP - use unique IP to avoid conflicts
+      const uniqueIP = `172.${Date.now() % 255}.${Math.floor(Date.now() / 1000) % 255}.1`;
       const requests = [];
 
       for (let i = 0; i < 11; i++) {
@@ -149,7 +146,7 @@ describe('Security Middleware', () => {
           url: 'http://localhost:3000/api/auth/sign-in',
           method: 'POST',
           headers: {
-            'x-forwarded-for': '192.168.1.1',
+            'x-forwarded-for': uniqueIP,
             'x-csrf-token': 'valid',
           },
         });
@@ -173,12 +170,16 @@ describe('Security Middleware', () => {
     });
 
     it('should track rate limits per IP', async () => {
-      // Requests from different IPs
+      // Requests from different IPs - use unique IPs based on timestamp to avoid conflicts
+      const uniqueId = Date.now();
+      const ip1 = `10.${Math.floor(uniqueId / 1000) % 255}.${(uniqueId % 1000) % 255}.1`;
+      const ip2 = `10.${Math.floor(uniqueId / 1000) % 255}.${(uniqueId % 1000) % 255}.2`;
+
       const ctx1 = createMockContext({
         url: 'http://localhost:3000/api/auth/sign-in',
         method: 'POST',
         headers: {
-          'x-forwarded-for': '192.168.1.1',
+          'x-forwarded-for': ip1,
           'x-csrf-token': 'valid',
         },
       });
@@ -187,7 +188,7 @@ describe('Security Middleware', () => {
         url: 'http://localhost:3000/api/auth/sign-in',
         method: 'POST',
         headers: {
-          'x-forwarded-for': '192.168.1.2',
+          'x-forwarded-for': ip2,
           'x-csrf-token': 'valid',
         },
       });
@@ -203,13 +204,14 @@ describe('Security Middleware', () => {
     });
 
     it('should not rate limit non-auth endpoints', async () => {
+      const uniqueIP = `192.168.${Date.now() % 255}.${Math.floor(Date.now() / 1000) % 255}`;
       const requests = [];
 
       for (let i = 0; i < 15; i++) {
         const ctx = createMockContext({
           url: 'http://localhost:3000/api/other-endpoint',
           headers: {
-            'x-forwarded-for': '192.168.1.1',
+            'x-forwarded-for': uniqueIP,
           },
         });
 

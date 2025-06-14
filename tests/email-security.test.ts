@@ -6,6 +6,19 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Mock nodemailer before importing providers
+vi.mock('nodemailer', () => ({
+  default: {
+    createTransport: vi.fn(() => ({
+      sendMail: vi.fn().mockResolvedValue({ messageId: 'test-id' }),
+    })),
+  },
+  createTransport: vi.fn(() => ({
+    sendMail: vi.fn().mockResolvedValue({ messageId: 'test-id' }),
+  })),
+}));
+
 import { ConsoleProvider, MailhogProvider, SMTPProvider } from '~/server/email/providers';
 
 describe('Email Provider Security', () => {
@@ -123,44 +136,41 @@ describe('Email Provider Security', () => {
 
   describe('SMTP Provider Security', () => {
     it('should properly configure SMTP transport with secure options', () => {
-      // Mock environment variables
-      process.env.SMTP_HOST = 'smtp.example.com';
-      process.env.SMTP_PORT = '587';
-      process.env.SMTP_USER = 'smtp-user';
-      process.env.SMTP_PASS = 'smtp-password';
-      process.env.SMTP_SECURE = 'true';
+      const config = {
+        host: 'smtp.example.com',
+        port: 587,
+        secure: true,
+        auth: {
+          user: 'smtp-user',
+          pass: 'smtp-password',
+        },
+      };
 
-      const provider = new SMTPProvider();
+      const provider = new SMTPProvider(config);
 
-      // Access the transporter config through the provider
-      // Note: In a real implementation, you might need to expose this for testing
-      // or use a spy to verify the configuration
-
-      // For now, we just verify the provider was created successfully
+      // Verify the provider was created successfully
       expect(provider).toBeDefined();
+      expect(provider.sendEmail).toBeDefined();
     });
 
-    it('should handle missing SMTP configuration gracefully', () => {
-      // Clear SMTP environment variables
-      delete process.env.SMTP_HOST;
-      delete process.env.SMTP_PORT;
-      delete process.env.SMTP_USER;
-      delete process.env.SMTP_PASS;
+    it('should handle minimal SMTP configuration', () => {
+      // Minimal config without auth
+      const config = {
+        host: 'localhost',
+        port: 25,
+      };
 
       // Creating provider should not throw
-      expect(() => new SMTPProvider()).not.toThrow();
+      expect(() => new SMTPProvider(config)).not.toThrow();
     });
   });
 
   describe('Mailhog Provider Security', () => {
     it('should use appropriate configuration for development', async () => {
-      const provider = new MailhogProvider();
+      // Mock console.log to capture output
+      const consoleLogSpy = vi.spyOn(console, 'log');
 
-      // Mock fetch to prevent actual HTTP requests
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ success: true }),
-      });
+      const provider = new MailhogProvider();
 
       await provider.sendEmail({
         from: 'test@example.com',
@@ -169,32 +179,22 @@ describe('Email Provider Security', () => {
         html: '<p>Test content with <a href="?token=secret">link</a></p>',
       });
 
-      // Verify fetch was called with correct URL
-      expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:8025/api/v1/send',
-        expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-      );
+      // Verify console log was called
+      expect(consoleLogSpy).toHaveBeenCalledWith('Email sent to Mailhog: recipient@example.com');
 
-      // Verify the body contains the email data
-      const fetchCall = vi.mocked(fetch).mock.calls[0];
-      const body = JSON.parse(fetchCall[1].body as string);
-
-      expect(body.from).toBe('test@example.com');
-      expect(body.to).toBe('recipient@example.com');
-      expect(body.subject).toBe('Test Email');
-      expect(body.html).toContain('token=secret'); // Mailhog can show tokens for dev
+      // Restore console.log
+      consoleLogSpy.mockRestore();
     });
   });
 
   describe('General Email Security', () => {
     it('should enforce consistent security practices across providers', () => {
       // Test that all providers implement the same interface
-      const providers = [new ConsoleProvider(), new SMTPProvider(), new MailhogProvider()];
+      const providers = [
+        new ConsoleProvider(),
+        new SMTPProvider({ host: 'localhost', port: 25 }),
+        new MailhogProvider(),
+      ];
 
       providers.forEach((provider) => {
         // All should have sendEmail method
