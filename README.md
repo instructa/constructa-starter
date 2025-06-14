@@ -182,81 +182,89 @@ VITE_GOOGLE_CLIENT_ID="your-google-client-id"
 
 ### Email Service Setup
 
-The application uses **Resend as the default email provider** for sending verification and password reset emails.
+The application supports **multiple email providers** for maximum flexibility. You can choose between console logging, Mailhog (for local development), SMTP, or Resend based on your needs.
 
-#### Quick Setup with Resend (Default)
+#### Email Provider Options
 
-1. **Install Resend** (already included):
+1. **Console Provider** (Default for development)
+   - Logs emails to the console
+   - No external dependencies
+   - Perfect for initial development
+
    ```bash
-   pnpm add resend
+   EMAIL_PROVIDER="console"
    ```
 
-2. **Get your Resend API key**:
+2. **Mailhog** (Recommended for local development)
+   - Catches all emails locally
+   - Web UI to view emails at http://localhost:8025
+   - Already included in Docker Compose
+
+   ```bash
+   EMAIL_PROVIDER="mailhog"
+   # No additional configuration needed
+   ```
+
+   Start Mailhog with Docker:
+   ```bash
+   docker-compose up -d mailhog
+   ```
+
+3. **SMTP Provider** (For production or custom email servers)
+   ```bash
+   EMAIL_PROVIDER="smtp"
+   SMTP_HOST="smtp.gmail.com"
+   SMTP_PORT="587"
+   SMTP_SECURE="false"
+   SMTP_USER="your-email@gmail.com"
+   SMTP_PASS="your-app-password"
+   ```
+
+4. **Resend** (Modern email API)
+   ```bash
+   EMAIL_PROVIDER="resend"
+   RESEND_API_KEY="re_xxxxxxxxxxxx"
+   ```
+
    - Sign up at [resend.com](https://resend.com)
    - Create an API key in your dashboard
    - Add your domain and verify it (for production)
 
-3. **Configure environment variables**:
-   ```bash
-   EMAIL_FROM="noreply@yourdomain.com"  # Use your verified domain
-   RESEND_API_KEY="your-resend-api-key"
-   ```
+#### Common Email Configuration
 
-4. **Enable email verification** (optional):
-   ```bash
-   ENABLE_EMAIL_VERIFICATION="true"
-   VITE_ENABLE_EMAIL_VERIFICATION="true"
-   ```
+```bash
+# Set the default "from" address
+EMAIL_FROM="noreply@yourdomain.com"
 
-#### Changing Email Providers
+# Enable email verification (optional)
+ENABLE_EMAIL_VERIFICATION="true"
+VITE_ENABLE_EMAIL_VERIFICATION="true"
+```
 
-If you want to use a different email service instead of Resend:
+#### Adding Custom Email Providers
 
-1. **Install your preferred email service**:
-   ```bash
-   # SendGrid
-   pnpm add @sendgrid/mail
-   
-   # Postmark  
-   pnpm add postmark
-   
-   # Nodemailer
-   pnpm add nodemailer
-   
-   # Mailgun
-   pnpm add mailgun.js
-   ```
+The email system is designed to be extensible. To add a new provider:
 
-2. **Update `server/auth.ts`**:
-   Replace the Resend import and configuration with your chosen provider:
-
+1. **Create a new provider class** in `src/server/email/providers.ts`:
    ```typescript
-   // Example: Replace Resend with SendGrid
-   import sgMail from '@sendgrid/mail'
-   
-   sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
-   
-   // In the emailVerification and sendResetPassword configs:
-   await sgMail.send({
-     to: user.email,
-     from: process.env.EMAIL_FROM!,
-     subject: 'Verify your email',
-     html: `<a href="${url}">Click here to verify your email</a>`
-   })
+   export class MyCustomProvider implements EmailProvider {
+     async sendEmail({ from, to, subject, html }) {
+       // Your implementation here
+     }
+   }
    ```
 
-3. **Update environment variables**:
-   Remove Resend variables and add your provider's variables:
+2. **Add the provider to the factory** in `src/server/email/index.ts`:
+   ```typescript
+   case "custom":
+     emailProvider = new MyCustomProvider();
+     break;
+   ```
+
+3. **Update your environment variables**:
    ```bash
-   # Remove
-   # RESEND_API_KEY="your-resend-api-key"
-   
-   # Add your provider's variables
-   SENDGRID_API_KEY="your-sendgrid-api-key"
-   # or
-   POSTMARK_API_TOKEN="your-postmark-token"
-   # or  
-   MAILGUN_API_KEY="your-mailgun-api-key"
+   EMAIL_PROVIDER="custom"
+   # Add any custom configuration needed
    ```
 
 #### Email Verification Behavior

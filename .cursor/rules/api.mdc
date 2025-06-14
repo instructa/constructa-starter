@@ -1,0 +1,25 @@
+---
+description: 
+globs: src/routes/api/*.ts,src/routes/api/**/*.ts
+alwaysApply: false
+---
+HTTP endpoints use `createServerFileRoute` from `@tanstack/react-start/server` exported as `ServerRoute`.
+
+```typescript
+import { json } from "@tanstack/react-start";
+import { createServerFileRoute } from "@tanstack/react-start/server";
+
+export const ServerRoute = createServerFileRoute("/api/widgets").methods({
+  GET: async ({ request, params, context }) => {
+    /* …business logic… */
+    return json([{ id: 1, name: "Ada" }]);
+  },
+  POST: async ({ request }) => {
+    const body = await request.json();
+    /* …create widget… */
+    return json({ ok: true }, { status: 201 });
+  },
+});
+```
+
+❌ Don't: `createAPIFileRoute`, export as `APIRoute`, or use other import sources

@@ -13,31 +13,14 @@ import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as SignUpRouteImport } from './routes/sign-up'
-import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as DocsRouteImport } from './routes/docs'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as AuthRouteRouteImport } from './routes/auth/route'
+import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as marketingRouteRouteImport } from './routes/(marketing)/route'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as marketingIndexRouteImport } from './routes/(marketing)/index'
-import { Route as AuthVerifyEmailRouteImport } from './routes/auth/verify-email'
-import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
-import { Route as AuthResendVerificationRouteImport } from './routes/auth/resend-verification'
-import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
+import { Route as AuthPathnameRouteImport } from './routes/auth/$pathname'
 
 // Create/Update Routes
-
-const SignUpRoute = SignUpRouteImport.update({
-  id: '/sign-up',
-  path: '/sign-up',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const SignInRoute = SignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
-  getParentRoute: () => rootRoute,
-} as any)
 
 const DocsRoute = DocsRouteImport.update({
   id: '/docs',
@@ -45,15 +28,9 @@ const DocsRoute = DocsRouteImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const DashboardRoute = DashboardRouteImport.update({
+const DashboardRouteRoute = DashboardRouteRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const AuthRouteRoute = AuthRouteRouteImport.update({
-  id: '/auth',
-  path: '/auth',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -62,34 +39,22 @@ const marketingRouteRoute = marketingRouteRouteImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+
 const marketingIndexRoute = marketingIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => marketingRouteRoute,
 } as any)
 
-const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
-  id: '/verify-email',
-  path: '/verify-email',
-  getParentRoute: () => AuthRouteRoute,
-} as any)
-
-const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => AuthRouteRoute,
-} as any)
-
-const AuthResendVerificationRoute = AuthResendVerificationRouteImport.update({
-  id: '/resend-verification',
-  path: '/resend-verification',
-  getParentRoute: () => AuthRouteRoute,
-} as any)
-
-const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => AuthRouteRoute,
+const AuthPathnameRoute = AuthPathnameRouteImport.update({
+  id: '/auth/$pathname',
+  path: '/auth/$pathname',
+  getParentRoute: () => rootRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -103,18 +68,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof marketingRouteRouteImport
       parentRoute: typeof rootRoute
     }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteRouteImport
-      parentRoute: typeof rootRoute
-    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
+      preLoaderRoute: typeof DashboardRouteRouteImport
       parentRoute: typeof rootRoute
     }
     '/docs': {
@@ -124,47 +82,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsRouteImport
       parentRoute: typeof rootRoute
     }
-    '/sign-in': {
-      id: '/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof SignInRouteImport
+    '/auth/$pathname': {
+      id: '/auth/$pathname'
+      path: '/auth/$pathname'
+      fullPath: '/auth/$pathname'
+      preLoaderRoute: typeof AuthPathnameRouteImport
       parentRoute: typeof rootRoute
-    }
-    '/sign-up': {
-      id: '/sign-up'
-      path: '/sign-up'
-      fullPath: '/sign-up'
-      preLoaderRoute: typeof SignUpRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/auth/forgot-password': {
-      id: '/auth/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/auth/forgot-password'
-      preLoaderRoute: typeof AuthForgotPasswordRouteImport
-      parentRoute: typeof AuthRouteRouteImport
-    }
-    '/auth/resend-verification': {
-      id: '/auth/resend-verification'
-      path: '/resend-verification'
-      fullPath: '/auth/resend-verification'
-      preLoaderRoute: typeof AuthResendVerificationRouteImport
-      parentRoute: typeof AuthRouteRouteImport
-    }
-    '/auth/reset-password': {
-      id: '/auth/reset-password'
-      path: '/reset-password'
-      fullPath: '/auth/reset-password'
-      preLoaderRoute: typeof AuthResetPasswordRouteImport
-      parentRoute: typeof AuthRouteRouteImport
-    }
-    '/auth/verify-email': {
-      id: '/auth/verify-email'
-      path: '/verify-email'
-      fullPath: '/auth/verify-email'
-      preLoaderRoute: typeof AuthVerifyEmailRouteImport
-      parentRoute: typeof AuthRouteRouteImport
     }
     '/(marketing)/': {
       id: '/(marketing)/'
@@ -172,6 +95,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof marketingIndexRouteImport
       parentRoute: typeof marketingRouteRouteImport
+    }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRouteRouteImport
     }
   }
 }
@@ -187,16 +117,7 @@ declare module './routes/(marketing)/route' {
     FileRoutesByPath['/(marketing)']['fullPath']
   >
 }
-declare module './routes/auth/route' {
-  const createFileRoute: CreateFileRoute<
-    '/auth',
-    FileRoutesByPath['/auth']['parentRoute'],
-    FileRoutesByPath['/auth']['id'],
-    FileRoutesByPath['/auth']['path'],
-    FileRoutesByPath['/auth']['fullPath']
-  >
-}
-declare module './routes/dashboard' {
+declare module './routes/dashboard/route' {
   const createFileRoute: CreateFileRoute<
     '/dashboard',
     FileRoutesByPath['/dashboard']['parentRoute'],
@@ -214,58 +135,13 @@ declare module './routes/docs' {
     FileRoutesByPath['/docs']['fullPath']
   >
 }
-declare module './routes/sign-in' {
+declare module './routes/auth/$pathname' {
   const createFileRoute: CreateFileRoute<
-    '/sign-in',
-    FileRoutesByPath['/sign-in']['parentRoute'],
-    FileRoutesByPath['/sign-in']['id'],
-    FileRoutesByPath['/sign-in']['path'],
-    FileRoutesByPath['/sign-in']['fullPath']
-  >
-}
-declare module './routes/sign-up' {
-  const createFileRoute: CreateFileRoute<
-    '/sign-up',
-    FileRoutesByPath['/sign-up']['parentRoute'],
-    FileRoutesByPath['/sign-up']['id'],
-    FileRoutesByPath['/sign-up']['path'],
-    FileRoutesByPath['/sign-up']['fullPath']
-  >
-}
-declare module './routes/auth/forgot-password' {
-  const createFileRoute: CreateFileRoute<
-    '/auth/forgot-password',
-    FileRoutesByPath['/auth/forgot-password']['parentRoute'],
-    FileRoutesByPath['/auth/forgot-password']['id'],
-    FileRoutesByPath['/auth/forgot-password']['path'],
-    FileRoutesByPath['/auth/forgot-password']['fullPath']
-  >
-}
-declare module './routes/auth/resend-verification' {
-  const createFileRoute: CreateFileRoute<
-    '/auth/resend-verification',
-    FileRoutesByPath['/auth/resend-verification']['parentRoute'],
-    FileRoutesByPath['/auth/resend-verification']['id'],
-    FileRoutesByPath['/auth/resend-verification']['path'],
-    FileRoutesByPath['/auth/resend-verification']['fullPath']
-  >
-}
-declare module './routes/auth/reset-password' {
-  const createFileRoute: CreateFileRoute<
-    '/auth/reset-password',
-    FileRoutesByPath['/auth/reset-password']['parentRoute'],
-    FileRoutesByPath['/auth/reset-password']['id'],
-    FileRoutesByPath['/auth/reset-password']['path'],
-    FileRoutesByPath['/auth/reset-password']['fullPath']
-  >
-}
-declare module './routes/auth/verify-email' {
-  const createFileRoute: CreateFileRoute<
-    '/auth/verify-email',
-    FileRoutesByPath['/auth/verify-email']['parentRoute'],
-    FileRoutesByPath['/auth/verify-email']['id'],
-    FileRoutesByPath['/auth/verify-email']['path'],
-    FileRoutesByPath['/auth/verify-email']['fullPath']
+    '/auth/$pathname',
+    FileRoutesByPath['/auth/$pathname']['parentRoute'],
+    FileRoutesByPath['/auth/$pathname']['id'],
+    FileRoutesByPath['/auth/$pathname']['path'],
+    FileRoutesByPath['/auth/$pathname']['fullPath']
   >
 }
 declare module './routes/(marketing)/index' {
@@ -275,6 +151,15 @@ declare module './routes/(marketing)/index' {
     FileRoutesByPath['/(marketing)/']['id'],
     FileRoutesByPath['/(marketing)/']['path'],
     FileRoutesByPath['/(marketing)/']['fullPath']
+  >
+}
+declare module './routes/dashboard/index' {
+  const createFileRoute: CreateFileRoute<
+    '/dashboard/',
+    FileRoutesByPath['/dashboard/']['parentRoute'],
+    FileRoutesByPath['/dashboard/']['id'],
+    FileRoutesByPath['/dashboard/']['path'],
+    FileRoutesByPath['/dashboard/']['fullPath']
   >
 }
 
@@ -292,122 +177,71 @@ const marketingRouteRouteWithChildren = marketingRouteRoute._addFileChildren(
   marketingRouteRouteChildren,
 )
 
-interface AuthRouteRouteChildren {
-  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
-  AuthResendVerificationRoute: typeof AuthResendVerificationRoute
-  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
-  AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
+interface DashboardRouteRouteChildren {
+  DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
-const AuthRouteRouteChildren: AuthRouteRouteChildren = {
-  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
-  AuthResendVerificationRoute: AuthResendVerificationRoute,
-  AuthResetPasswordRoute: AuthResetPasswordRoute,
-  AuthVerifyEmailRoute: AuthVerifyEmailRoute,
+const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
+  DashboardIndexRoute: DashboardIndexRoute,
 }
 
-const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
-  AuthRouteRouteChildren,
+const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
+  DashboardRouteRouteChildren,
 )
 
 export interface FileRoutesByFullPath {
   '/': typeof marketingIndexRoute
-  '/auth': typeof AuthRouteRouteWithChildren
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteRouteWithChildren
   '/docs': typeof DocsRoute
-  '/sign-in': typeof SignInRoute
-  '/sign-up': typeof SignUpRoute
-  '/auth/forgot-password': typeof AuthForgotPasswordRoute
-  '/auth/resend-verification': typeof AuthResendVerificationRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/auth/verify-email': typeof AuthVerifyEmailRoute
+  '/auth/$pathname': typeof AuthPathnameRoute
+  '/dashboard/': typeof DashboardIndexRoute
 }
 
 export interface FileRoutesByTo {
-  '/auth': typeof AuthRouteRouteWithChildren
-  '/dashboard': typeof DashboardRoute
   '/docs': typeof DocsRoute
-  '/sign-in': typeof SignInRoute
-  '/sign-up': typeof SignUpRoute
-  '/auth/forgot-password': typeof AuthForgotPasswordRoute
-  '/auth/resend-verification': typeof AuthResendVerificationRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/auth/verify-email': typeof AuthVerifyEmailRoute
+  '/auth/$pathname': typeof AuthPathnameRoute
   '/': typeof marketingIndexRoute
+  '/dashboard': typeof DashboardIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/(marketing)': typeof marketingRouteRouteWithChildren
-  '/auth': typeof AuthRouteRouteWithChildren
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteRouteWithChildren
   '/docs': typeof DocsRoute
-  '/sign-in': typeof SignInRoute
-  '/sign-up': typeof SignUpRoute
-  '/auth/forgot-password': typeof AuthForgotPasswordRoute
-  '/auth/resend-verification': typeof AuthResendVerificationRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/auth/verify-email': typeof AuthVerifyEmailRoute
+  '/auth/$pathname': typeof AuthPathnameRoute
   '/(marketing)/': typeof marketingIndexRoute
+  '/dashboard/': typeof DashboardIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/auth'
-    | '/dashboard'
-    | '/docs'
-    | '/sign-in'
-    | '/sign-up'
-    | '/auth/forgot-password'
-    | '/auth/resend-verification'
-    | '/auth/reset-password'
-    | '/auth/verify-email'
+  fullPaths: '/' | '/dashboard' | '/docs' | '/auth/$pathname' | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/auth'
-    | '/dashboard'
-    | '/docs'
-    | '/sign-in'
-    | '/sign-up'
-    | '/auth/forgot-password'
-    | '/auth/resend-verification'
-    | '/auth/reset-password'
-    | '/auth/verify-email'
-    | '/'
+  to: '/docs' | '/auth/$pathname' | '/' | '/dashboard'
   id:
     | '__root__'
     | '/(marketing)'
-    | '/auth'
     | '/dashboard'
     | '/docs'
-    | '/sign-in'
-    | '/sign-up'
-    | '/auth/forgot-password'
-    | '/auth/resend-verification'
-    | '/auth/reset-password'
-    | '/auth/verify-email'
+    | '/auth/$pathname'
     | '/(marketing)/'
+    | '/dashboard/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   marketingRouteRoute: typeof marketingRouteRouteWithChildren
-  AuthRouteRoute: typeof AuthRouteRouteWithChildren
-  DashboardRoute: typeof DashboardRoute
+  DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
   DocsRoute: typeof DocsRoute
-  SignInRoute: typeof SignInRoute
-  SignUpRoute: typeof SignUpRoute
+  AuthPathnameRoute: typeof AuthPathnameRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   marketingRouteRoute: marketingRouteRouteWithChildren,
-  AuthRouteRoute: AuthRouteRouteWithChildren,
-  DashboardRoute: DashboardRoute,
+  DashboardRouteRoute: DashboardRouteRouteWithChildren,
   DocsRoute: DocsRoute,
-  SignInRoute: SignInRoute,
-  SignUpRoute: SignUpRoute,
+  AuthPathnameRoute: AuthPathnameRoute,
 }
 
 export const routeTree = rootRoute
@@ -421,11 +255,9 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/(marketing)",
-        "/auth",
         "/dashboard",
         "/docs",
-        "/sign-in",
-        "/sign-up"
+        "/auth/$pathname"
       ]
     },
     "/(marketing)": {
@@ -434,46 +266,25 @@ export const routeTree = rootRoute
         "/(marketing)/"
       ]
     },
-    "/auth": {
-      "filePath": "auth/route.tsx",
-      "children": [
-        "/auth/forgot-password",
-        "/auth/resend-verification",
-        "/auth/reset-password",
-        "/auth/verify-email"
-      ]
-    },
     "/dashboard": {
-      "filePath": "dashboard.tsx"
+      "filePath": "dashboard/route.tsx",
+      "children": [
+        "/dashboard/"
+      ]
     },
     "/docs": {
       "filePath": "docs.tsx"
     },
-    "/sign-in": {
-      "filePath": "sign-in.tsx"
-    },
-    "/sign-up": {
-      "filePath": "sign-up.tsx"
-    },
-    "/auth/forgot-password": {
-      "filePath": "auth/forgot-password.tsx",
-      "parent": "/auth"
-    },
-    "/auth/resend-verification": {
-      "filePath": "auth/resend-verification.tsx",
-      "parent": "/auth"
-    },
-    "/auth/reset-password": {
-      "filePath": "auth/reset-password.tsx",
-      "parent": "/auth"
-    },
-    "/auth/verify-email": {
-      "filePath": "auth/verify-email.tsx",
-      "parent": "/auth"
+    "/auth/$pathname": {
+      "filePath": "auth/$pathname.tsx"
     },
     "/(marketing)/": {
       "filePath": "(marketing)/index.tsx",
       "parent": "/(marketing)"
+    },
+    "/dashboard/": {
+      "filePath": "dashboard/index.tsx",
+      "parent": "/dashboard"
     }
   }
 }

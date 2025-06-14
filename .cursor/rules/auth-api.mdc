@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Authentication API Reference Rule
+
+When working with Better Auth UI API, hooks, mutations, and customization, always reference the API documentation at `dev_docs/better-auth-ui/better-auth-ui-api-reference.md` for proper implementation.
+

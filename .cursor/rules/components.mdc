@@ -1,0 +1,14 @@
+---
+description: 
+globs: src/components/**/*.tsx
+alwaysApply: false
+---
+## Links & Navigation
+- Use typed `<Link>` from `@tanstack/react-router`
+- Example with all key props:
+```tsx
+<Link to="/posts/$postId" params={{ postId: post.id }} 
+      activeProps={{ className: 'text-black' }} className="block">
+  {post.title}
+</Link>
+```

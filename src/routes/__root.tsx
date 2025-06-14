@@ -1,18 +1,23 @@
+import { AuthQueryProvider } from "@daveyplate/better-auth-tanstack";
+import { AuthUIProviderTanstack } from "@daveyplate/better-auth-ui/tanstack";
 // Root route file
 import type { QueryClient } from "@tanstack/react-query";
 import {
 	HeadContent,
+	Link,
 	Outlet,
 	Scripts,
 	createRootRouteWithContext,
+	useRouter,
 } from "@tanstack/react-router";
-import type * as React from "react";
 import { Toaster } from "sonner";
 import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary";
 import { NotFound } from "~/components/NotFound";
-import { AuthProvider } from "~/components/auth/auth-provider";
+import { ThemeInitScript } from "~/components/theme-init-script";
 import { ThemeProvider } from "~/components/theme-provider";
+import { authClient } from "~/lib/auth-client";
 import { getTheme } from "~/lib/theme";
+import type { Theme } from "~/lib/theme";
 import { seo } from "~/utils/seo";
 import appCss from "../styles/app.css?url";
 import customCss from "../styles/custom.css?url";
@@ -86,33 +91,30 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	const initial = Route.useLoaderData() as Theme;
+	const router = useRouter();
+
 	return (
 		<html lang="en" className={initial === "system" ? "" : initial}>
 			<head>
-				<script
-					// runs before the CSS is parsed, so there is no flash
-					dangerouslySetInnerHTML={{
-						__html: `
-                        (function () {
-                        try {
-                            var t = localStorage.getItem("vite-ui-theme");
-                            if (!t) return;
-                            if (t === "light" || t === "dark") {
-                            document.documentElement.classList.add(t);
-                            }
-                        } catch {}
-                        })();`,
-					}}
-				/>
+				{/* Early theme application – prevents FOUC without react/no-danger noise */}
+				<ThemeInitScript />
 				<HeadContent />
 			</head>
 			<body className="">
-				<ThemeProvider initial={initial}>
-					<AuthProvider>
-						<div className="flex min-h-svh flex-col">{children}</div>
-						<Toaster />
-					</AuthProvider>
-				</ThemeProvider>
+				<AuthQueryProvider>
+					<ThemeProvider initial={initial}>
+						<AuthUIProviderTanstack
+							authClient={authClient}
+							redirectTo="/dashboard"
+							navigate={(href) => router.navigate({ href })}
+							replace={(href) => router.navigate({ href, replace: true })}
+							Link={({ href, ...props }) => <Link to={href} {...props} />}
+						>
+							<div className="flex min-h-svh flex-col">{children}</div>
+							<Toaster />
+						</AuthUIProviderTanstack>
+					</ThemeProvider>
+				</AuthQueryProvider>
 				<Scripts />
 			</body>
 		</html>
