@@ -63,7 +63,7 @@
 		"drizzle-kit": "^0.31.1",
 		"drizzle-orm": "^0.44.2",
 		"framer-motion": "^12.16.0",
-		"lucide-react": "^0.513.0",
+		"lucide-react": "^0.515.0",
 		"motion": "^12.16.0",
 		"nodemailer": "^7.0.3",
 		"pg": "^8.16.0",
