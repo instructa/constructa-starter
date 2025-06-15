@@ -37,6 +37,12 @@ export function NavUser({
     });
   };
 
+  const handleAccountClick = () => {
+    router.navigate({
+      to: '/dashboard/settings' as const,
+    });
+  };
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -77,7 +83,7 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleAccountClick}>
                 <UserCircle />
                 Account
               </DropdownMenuItem>
