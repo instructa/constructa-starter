@@ -11,7 +11,6 @@
 
 > ⚠️ **Work in Progress** - This starter kit is currently under active development. Features and documentation may change frequently.
 
-
 ## ✨ Features
 
 - **[TanStack Start](https://tanstack.com/start)** - Modern full-stack React framework
@@ -28,7 +27,8 @@
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Node.js** 18+ 
+
+- **Node.js** 18+
 - **pnpm** (recommended package manager)
 
 ### Installation
@@ -99,47 +99,47 @@ drizzle/                 # Database migrations
 tests/                   # Test files
 ```
 
-| Command    | Description                                                                | Args                 |
-| :--------- | :------------------------------------------------------------------------- | :------------------- |
-| `init`     | Initialize the project (dependencies, DB setup, Docker)                    |                      |
-| `stop`     | Stop running Docker containers                                             |                      |
-| `reload`   | Reload Docker containers with updated configuration                        |                      |
-| `recreate` | Recreate Docker containers and volume (WARNING: deletes all data!)         |                      |
-| `recreate` | Recreate Docker containers (use <code>--wipeVolume</code> to also delete the data volume) | `--wipeVolume` |
-| `testdata` | Create or delete seed test data in the database                            | `--create`, `--delete` |
-| `deploy`   | [TODO] Deploy the application                                              |                      |
+| Command    | Description                                                                               | Args                   |
+| :--------- | :---------------------------------------------------------------------------------------- | :--------------------- |
+| `init`     | Initialize the project (dependencies, DB setup, Docker)                                   |                        |
+| `stop`     | Stop running Docker containers                                                            |                        |
+| `reload`   | Reload Docker containers with updated configuration                                       |                        |
+| `recreate` | Recreate Docker containers and volume (WARNING: deletes all data!)                        |                        |
+| `recreate` | Recreate Docker containers (use <code>--wipeVolume</code> to also delete the data volume) | `--wipeVolume`         |
+| `testdata` | Create or delete seed test data in the database                                           | `--create`, `--delete` |
+| `deploy`   | [TODO] Deploy the application                                                             |                        |
 
 ### npm/pnpm Scripts
 
 Standard project scripts are available via `pnpm <script-name>`.
 
-| Script             | Description                                      | Underlying Command                                                                       |
-| :----------------- | :----------------------------------------------- | :--------------------------------------------------------------------------------------- |
-| `dev`              | Start development server                         | `vite`                                                                                   |
-| `build`            | Build the project                                | `vite build`                                                                             |
-| `start`            | Start production server                          | `vite preview`                                                                           |
-| `test`             | Run tests                                        | `vitest`                                                                                 |
-| `db:pull`          | Pull database schema using Drizzle Kit           | `npx drizzle-kit pull`                                                                   |
-| `db:generate`      | Generate Drizzle migrations/schema changes       | `npx drizzle-kit generate`                                                               |
-| `db:migrate`       | Apply Drizzle migrations                         | `npx drizzle-kit migrate`                                                                |
-| `auth:init`        | Generate Better Auth schema                      | `npx -y @better-auth/cli@latest generate --config src/server/auth.ts --output src/server/db/auth.schema.ts` |
-| `ex0`              | Run the custom project CLI                       | `tsx cli/index.ts`                                                                       |
+| Script        | Description                                | Underlying Command                                                                                          |
+| :------------ | :----------------------------------------- | :---------------------------------------------------------------------------------------------------------- |
+| `dev`         | Start development server                   | `vite`                                                                                                      |
+| `build`       | Build the project                          | `vite build`                                                                                                |
+| `start`       | Start production server                    | `vite preview`                                                                                              |
+| `test`        | Run tests                                  | `vitest`                                                                                                    |
+| `db:pull`     | Pull database schema using Drizzle Kit     | `npx drizzle-kit pull`                                                                                      |
+| `db:generate` | Generate Drizzle migrations/schema changes | `npx drizzle-kit generate`                                                                                  |
+| `db:migrate`  | Apply Drizzle migrations                   | `npx drizzle-kit migrate`                                                                                   |
+| `auth:init`   | Generate Better Auth schema                | `npx -y @better-auth/cli@latest generate --config src/server/auth.ts --output src/server/db/auth.schema.ts` |
+| `ex0`         | Run the custom project CLI                 | `tsx cli/index.ts`                                                                                          |
 
 ### Tech Stack Reference
 
-| Technology | Purpose | Documentation |
-|------------|---------|---------------|
-| **TanStack Start** | Full-stack React framework | [Docs](https://tanstack.com/start) |
-| **TanStack Router** | Type-safe file-based routing | [Docs](https://tanstack.com/router) |
-| **Better Auth** | Authentication & user management | [Docs](https://better-auth.com/) |
-| **Drizzle ORM** | Type-safe database ORM | [Docs](https://orm.drizzle.team/) |
-| **PostgreSQL** | Database | [Docs](https://postgresql.org/) |
-| **shadcn/ui** | Component library | [Docs](https://ui.shadcn.com/) |
-| **Tailwind CSS** | Utility-first CSS framework | [Docs](https://tailwindcss.com/) |
-| **TypeScript** | Type safety | [Docs](https://typescriptlang.org/) |
-| **Oxlint** | Fast JavaScript/TypeScript linter | [Docs](https://oxc.rs/) |
-| **Vitest** | Unit testing framework | [Docs](https://vitest.dev/) |
-| **Resend** | Email delivery service | [Docs](https://resend.com/) |
+| Technology          | Purpose                           | Documentation                       |
+| ------------------- | --------------------------------- | ----------------------------------- |
+| **TanStack Start**  | Full-stack React framework        | [Docs](https://tanstack.com/start)  |
+| **TanStack Router** | Type-safe file-based routing      | [Docs](https://tanstack.com/router) |
+| **Better Auth**     | Authentication & user management  | [Docs](https://better-auth.com/)    |
+| **Drizzle ORM**     | Type-safe database ORM            | [Docs](https://orm.drizzle.team/)   |
+| **PostgreSQL**      | Database                          | [Docs](https://postgresql.org/)     |
+| **shadcn/ui**       | Component library                 | [Docs](https://ui.shadcn.com/)      |
+| **Tailwind CSS**    | Utility-first CSS framework       | [Docs](https://tailwindcss.com/)    |
+| **TypeScript**      | Type safety                       | [Docs](https://typescriptlang.org/) |
+| **Oxlint**          | Fast JavaScript/TypeScript linter | [Docs](https://oxc.rs/)             |
+| **Vitest**          | Unit testing framework            | [Docs](https://vitest.dev/)         |
+| **Resend**          | Email delivery service            | [Docs](https://resend.com/)         |
 
 ## 🔧 Configuration
 
@@ -190,6 +190,7 @@ The application supports **multiple email providers** for maximum flexibility. Y
 #### Email Provider Options
 
 1. **Console Provider** (Default for development)
+
    - Logs emails to the console
    - No external dependencies
    - Perfect for initial development
@@ -199,6 +200,7 @@ The application supports **multiple email providers** for maximum flexibility. Y
    ```
 
 2. **Mailhog** (Recommended for local development)
+
    - Catches all emails locally
    - Web UI to view emails at http://localhost:8025
    - Already included in Docker Compose
@@ -209,11 +211,13 @@ The application supports **multiple email providers** for maximum flexibility. Y
    ```
 
    Start Mailhog with Docker:
+
    ```bash
    docker-compose up -d mailhog
    ```
 
 3. **SMTP Provider** (For production or custom email servers)
+
    ```bash
    EMAIL_PROVIDER="smtp"
    SMTP_HOST="smtp.gmail.com"
@@ -224,6 +228,7 @@ The application supports **multiple email providers** for maximum flexibility. Y
    ```
 
 4. **Resend** (Modern email API)
+
    ```bash
    EMAIL_PROVIDER="resend"
    RESEND_API_KEY="re_xxxxxxxxxxxx"
@@ -249,6 +254,7 @@ VITE_ENABLE_EMAIL_VERIFICATION="true"
 The email system is designed to be extensible. To add a new provider:
 
 1. **Create a new provider class** in `src/server/email/providers.ts`:
+
    ```typescript
    export class MyCustomProvider implements EmailProvider {
      async sendEmail({ from, to, subject, html }) {
@@ -258,6 +264,7 @@ The email system is designed to be extensible. To add a new provider:
    ```
 
 2. **Add the provider to the factory** in `src/server/email/index.ts`:
+
    ```typescript
    case "custom":
      emailProvider = new MyCustomProvider();
@@ -273,11 +280,13 @@ The email system is designed to be extensible. To add a new provider:
 #### Email Verification Behavior
 
 **When disabled** (default):
+
 - Users are automatically signed in after registration
 - No verification email is sent
 - Users are redirected directly to the dashboard
 
 **When enabled**:
+
 - Users must verify their email before signing in
 - A verification email is sent upon registration
 - Users are redirected to a "check your email" page
@@ -290,6 +299,7 @@ The application supports OAuth authentication with GitHub and Google. Here's how
 #### GitHub OAuth Setup
 
 1. **Create a GitHub OAuth App:**
+
    - Go to [GitHub Developer Settings](https://github.com/settings/developers)
    - Click "New OAuth App"
    - Fill in the application details:
@@ -298,15 +308,17 @@ The application supports OAuth authentication with GitHub and Google. Here's how
      - **Authorization callback URL**: `http://localhost:3000/api/auth/callback/github`
 
 2. **Get your credentials:**
+
    - After creating the app, copy the **Client ID**
    - Generate a new **Client Secret**
 
 3. **Add to environment variables:**
+
    ```bash
    # Server-side configuration
    GITHUB_CLIENT_ID="your-github-client-id"
    GITHUB_CLIENT_SECRET="your-github-client-secret"
-   
+
    # Client-side configuration (for UI buttons)
    VITE_GITHUB_CLIENT_ID="your-github-client-id"
    ```
@@ -318,29 +330,34 @@ The application supports OAuth authentication with GitHub and Google. Here's how
 #### Google OAuth Setup
 
 1. **Create a Google OAuth App:**
+
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
    - Create a new project or select an existing one
    - Enable the Google+ API
    - Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client IDs"
 
 2. **Configure OAuth consent screen:**
+
    - Fill in the required application information
    - Add your domain to authorized domains
 
 3. **Create OAuth 2.0 Client ID:**
+
    - Application type: **Web application**
    - **Authorized JavaScript origins**: `http://localhost:3000` (for development)
    - **Authorized redirect URIs**: `http://localhost:3000/api/auth/callback/google`
 
 4. **Get your credentials:**
+
    - Copy the **Client ID** and **Client Secret**
 
 5. **Add to environment variables:**
+
    ```bash
    # Server-side configuration
    GOOGLE_CLIENT_ID="your-google-client-id"
    GOOGLE_CLIENT_SECRET="your-google-client-secret"
-   
+
    # Client-side configuration (for UI buttons)
    VITE_GOOGLE_CLIENT_ID="your-google-client-id"
    ```
@@ -354,6 +371,7 @@ The application supports OAuth authentication with GitHub and Google. Here's how
 Once configured, users will see GitHub and Google sign-in options on the authentication pages. The OAuth providers are conditionally enabled based on the presence of their respective environment variables.
 
 ### Adding shadcn/ui Components
+
 ```bash
 # Add new components
 npx shadcn@latest add button
@@ -362,23 +380,27 @@ npx shadcn@latest add input
 ```
 
 ### Database
+
 - **PostgreSQL** with Drizzle ORM for type-safe database operations
 - **Docker Compose** setup included for local development
 - **Drizzle Studio** for database visualization and management
 
 ### Authentication
+
 - **Better Auth** provides secure authentication with email/password and OAuth
 - **Protected routes** with automatic redirects
 - **Email verification** and password reset functionality
 - **GitHub & Google OAuth** support
 
 ### Styling & Components
+
 - **Tailwind CSS** for utility-first styling
 - **shadcn/ui** for beautiful, accessible components
 - **CSS custom properties** for theming support
 - **Dark/light mode** toggle included
 
 ### Development Tools
+
 - **Oxlint** for fast linting
 - **TypeScript** for type safety
 - **Vitest** for testing
@@ -386,12 +408,20 @@ npx shadcn@latest add input
 
 ## 🚀 Deployment
 
+### Deployment Targets
+
+This project supports multiple deployment targets including Netlify, Vercel, Cloudflare Pages, Node.js, and Bun. The deployment target can be configured via environment variables.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions for each platform.
+
 ### Build for Production
+
 ```bash
 pnpm build
 ```
 
 ### Start Production Server
+
 ```bash
 pnpm start
 ```
@@ -405,5 +435,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <div align="center">
   <p>Built with ❤️ using modern React tools</p>
 </div>
-
-
