@@ -1,4 +1,4 @@
-import { redirect } from '@tanstack/react-router';
+import { redirect, createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 import { SignInForm } from '~/components/auth/sign-in-form';
 import { SignUpForm } from '~/components/auth/sign-up-form';
@@ -23,7 +23,7 @@ const searchSchema = z.object({
   message: z.string().optional(),
 });
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/auth/$pathname')({
   validateSearch: searchSchema,
   component: RouteComponent,
   beforeLoad: async ({ params }: { params: { pathname: string } }) => {

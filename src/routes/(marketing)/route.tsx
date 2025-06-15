@@ -1,15 +1,15 @@
-import { Outlet } from "@tanstack/react-router";
-import { Header } from "~/components/Header";
+import { Outlet, createFileRoute } from '@tanstack/react-router';
+import { Header } from '~/components/Header';
 
-export const Route = createFileRoute({
-	component: RouteComponent,
+export const Route = createFileRoute('/(marketing)')({
+  component: RouteComponent,
 });
 
 function RouteComponent() {
-	return (
-		<div>
-			<Header />
-			<Outlet />
-		</div>
-	);
+  return (
+    <div>
+      <Header />
+      <Outlet />
+    </div>
+  );
 }

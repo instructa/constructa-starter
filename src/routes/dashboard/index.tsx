@@ -1,7 +1,7 @@
 import { AuthLoading, RedirectToSignIn, SignedIn } from '@daveyplate/better-auth-ui';
-import { redirect } from '@tanstack/react-router';
+import { redirect, createFileRoute } from '@tanstack/react-router';
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard/')({
   beforeLoad: () => {
     throw redirect({
       to: '/dashboard/charts',
