@@ -2,9 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import { defineConfig, loadEnv } from 'vite';
 import tsConfigPaths from 'vite-tsconfig-paths';
-
-// Define valid deployment targets
-type DeploymentTarget = 'netlify' | 'vercel' | 'cloudflare-pages' | 'node-server' | 'bun';
+import type { DeploymentTarget, TanStackStartOptions } from '~/types/deployment';
 
 export default defineConfig(({ mode }) => {
   // Load environment variables
@@ -14,7 +12,7 @@ export default defineConfig(({ mode }) => {
   const deploymentTarget = env.VITE_DEPLOYMENT_TARGET as DeploymentTarget | undefined;
 
   // Prepare tanstackStart options
-  const tanstackStartOptions: { target?: DeploymentTarget } = {};
+  const tanstackStartOptions: TanStackStartOptions = {};
   if (deploymentTarget) {
     tanstackStartOptions.target = deploymentTarget;
   }
