@@ -21,6 +21,12 @@ export function Header() {
 						</Link>
 					</SignedIn>
 					<Link
+						to="/pricing"
+						className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+					>
+						Pricing
+					</Link>
+					<Link
 						to="/docs"
 						className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
 					>
