@@ -26,6 +26,12 @@ export function Header() {
 					>
 						Docs
 					</Link>
+					<Link
+						to="/contact"
+						className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+					>
+						Contact
+					</Link>
 					<a
 						href="https://github.com/instructa/constructa-starter"
 						target="_blank"

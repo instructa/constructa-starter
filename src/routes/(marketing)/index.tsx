@@ -59,6 +59,12 @@ function RouteComponent() {
             <GitBranch className="mr-2 h-4 w-4" />
             View on GitHub
           </Button>
+          <Link to="/contact">
+            <Button size="lg" variant="outline" className="rounded-full px-8">
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Contact Us
+            </Button>
+          </Link>
         </div>
 
         <p className="mt-8 text-muted-foreground text-sm">
