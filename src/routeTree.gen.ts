@@ -19,6 +19,7 @@ import { Route as marketingRouteRouteImport } from './routes/(marketing)/route'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as marketingIndexRouteImport } from './routes/(marketing)/index'
 import { Route as AuthPathnameRouteImport } from './routes/auth/$pathname'
+import { Route as marketingPricingRouteImport } from './routes/(marketing)/pricing'
 import { Route as DashboardWorkflowRouteRouteImport } from './routes/dashboard/workflow/route'
 import { Route as DashboardImageChatRouteRouteImport } from './routes/dashboard/image-chat/route'
 import { Route as DashboardDocumentsRouteRouteImport } from './routes/dashboard/documents/route'
@@ -60,6 +61,12 @@ const AuthPathnameRoute = AuthPathnameRouteImport.update({
   id: '/auth/$pathname',
   path: '/auth/$pathname',
   getParentRoute: () => rootRoute,
+} as any)
+
+const marketingPricingRoute = marketingPricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => marketingRouteRoute,
 } as any)
 
 const DashboardWorkflowRouteRoute = DashboardWorkflowRouteRouteImport.update({
@@ -151,6 +158,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/workflow'
       preLoaderRoute: typeof DashboardWorkflowRouteRouteImport
       parentRoute: typeof DashboardRouteRouteImport
+    }
+    '/(marketing)/pricing': {
+      id: '/(marketing)/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof marketingPricingRouteImport
+      parentRoute: typeof marketingRouteRouteImport
     }
     '/auth/$pathname': {
       id: '/auth/$pathname'
@@ -250,6 +264,15 @@ declare module './routes/dashboard/workflow/route' {
     FileRoutesByPath['/dashboard/workflow']['fullPath']
   >
 }
+declare module './routes/(marketing)/pricing' {
+  const createFileRoute: CreateFileRoute<
+    '/(marketing)/pricing',
+    FileRoutesByPath['/(marketing)/pricing']['parentRoute'],
+    FileRoutesByPath['/(marketing)/pricing']['id'],
+    FileRoutesByPath['/(marketing)/pricing']['path'],
+    FileRoutesByPath['/(marketing)/pricing']['fullPath']
+  >
+}
 declare module './routes/auth/$pathname' {
   const createFileRoute: CreateFileRoute<
     '/auth/$pathname',
@@ -281,10 +304,12 @@ declare module './routes/dashboard/index' {
 // Create and export the route tree
 
 interface marketingRouteRouteChildren {
+  marketingPricingRoute: typeof marketingPricingRoute
   marketingIndexRoute: typeof marketingIndexRoute
 }
 
 const marketingRouteRouteChildren: marketingRouteRouteChildren = {
+  marketingPricingRoute: marketingPricingRoute,
   marketingIndexRoute: marketingIndexRoute,
 }
 
@@ -323,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/documents': typeof DashboardDocumentsRouteRoute
   '/dashboard/image-chat': typeof DashboardImageChatRouteRoute
   '/dashboard/workflow': typeof DashboardWorkflowRouteRoute
+  '/pricing': typeof marketingPricingRoute
   '/auth/$pathname': typeof AuthPathnameRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
@@ -334,6 +360,7 @@ export interface FileRoutesByTo {
   '/dashboard/documents': typeof DashboardDocumentsRouteRoute
   '/dashboard/image-chat': typeof DashboardImageChatRouteRoute
   '/dashboard/workflow': typeof DashboardWorkflowRouteRoute
+  '/pricing': typeof marketingPricingRoute
   '/auth/$pathname': typeof AuthPathnameRoute
   '/': typeof marketingIndexRoute
   '/dashboard': typeof DashboardIndexRoute
@@ -349,6 +376,7 @@ export interface FileRoutesById {
   '/dashboard/documents': typeof DashboardDocumentsRouteRoute
   '/dashboard/image-chat': typeof DashboardImageChatRouteRoute
   '/dashboard/workflow': typeof DashboardWorkflowRouteRoute
+  '/(marketing)/pricing': typeof marketingPricingRoute
   '/auth/$pathname': typeof AuthPathnameRoute
   '/(marketing)/': typeof marketingIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -365,6 +393,7 @@ export interface FileRouteTypes {
     | '/dashboard/documents'
     | '/dashboard/image-chat'
     | '/dashboard/workflow'
+    | '/pricing'
     | '/auth/$pathname'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
@@ -375,6 +404,7 @@ export interface FileRouteTypes {
     | '/dashboard/documents'
     | '/dashboard/image-chat'
     | '/dashboard/workflow'
+    | '/pricing'
     | '/auth/$pathname'
     | '/'
     | '/dashboard'
@@ -388,6 +418,7 @@ export interface FileRouteTypes {
     | '/dashboard/documents'
     | '/dashboard/image-chat'
     | '/dashboard/workflow'
+    | '/(marketing)/pricing'
     | '/auth/$pathname'
     | '/(marketing)/'
     | '/dashboard/'
@@ -427,6 +458,7 @@ export const routeTree = rootRoute
     "/(marketing)": {
       "filePath": "(marketing)/route.tsx",
       "children": [
+        "/(marketing)/pricing",
         "/(marketing)/"
       ]
     },
@@ -463,6 +495,10 @@ export const routeTree = rootRoute
     "/dashboard/workflow": {
       "filePath": "dashboard/workflow/route.tsx",
       "parent": "/dashboard"
+    },
+    "/(marketing)/pricing": {
+      "filePath": "(marketing)/pricing.tsx",
+      "parent": "/(marketing)"
     },
     "/auth/$pathname": {
       "filePath": "auth/$pathname.tsx"
