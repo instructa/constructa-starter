@@ -60,8 +60,8 @@ export const auth = betterAuth({
         use: [
           checkout({
             products: [
-              { productId: 'prod_monthly_•••', slug: 'pro-monthly' },
-              { productId: 'prod_yearly_•••', slug: 'pro-yearly' },
+              { productId: process.env.POLAR_PRODUCT_PRO_MONTHLY!, slug: 'pro-monthly' },
+              { productId: process.env.POLAR_PRODUCT_PRO_YEARLY!, slug: 'pro-yearly' },
             ],
             successUrl: '/success?checkout_id={CHECKOUT_ID}',
             authenticatedUsersOnly: true,
