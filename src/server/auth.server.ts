@@ -4,6 +4,10 @@ import { reactStartCookies } from 'better-auth/react-start';
 import { db } from '~/db/db-config';
 import { sendEmail } from './email';
 import { magicLink } from 'better-auth/plugins';
+import { eq } from 'drizzle-orm';
+import { polar, checkout, portal, usage, webhooks } from '@polar-sh/better-auth';
+import { Polar } from '@polar-sh/sdk';
+import { user as users } from '~/db/schema/auth.schema';
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -42,6 +46,44 @@ export const auth = betterAuth({
         });
       },
     }),
+    // 3️⃣  Polar plugin for unified auth ✕ billing
+    (() => {
+      const polarClient = new Polar({
+        accessToken: process.env.POLAR_ACCESS_TOKEN!,
+        server: (process.env.POLAR_SERVER as 'sandbox' | 'production') ?? 'sandbox',
+      });
+
+      return polar({
+        client: polarClient,
+        createCustomerOnSignUp: true,
+        getCustomerCreateParams: ({ user }) => ({ metadata: { refSource: 'tanstack-saas' } }),
+        use: [
+          checkout({
+            products: [
+              { productId: 'prod_monthly_•••', slug: 'pro-monthly' },
+              { productId: 'prod_yearly_•••', slug: 'pro-yearly' },
+            ],
+            successUrl: '/success?checkout_id={CHECKOUT_ID}',
+            authenticatedUsersOnly: true,
+          }),
+          portal(),
+          usage(),
+          webhooks({
+            secret: process.env.POLAR_WEBHOOK_SECRET!,
+            onCustomerStateChanged: async ({ data }, ctx) => {
+              const isPro = data.activeSubscriptions.length > 0;
+              await ctx.db
+                .update(users)
+                .set({
+                  plan: isPro ? 'pro' : 'free',
+                  subscriptionExp: isPro ? data.activeSubscriptions[0].currentPeriodEnd : null,
+                })
+                .where(eq(users.id, data.externalId));
+            },
+          }),
+        ],
+      });
+    })(),
   ],
   emailAndPassword: {
     enabled: true,
