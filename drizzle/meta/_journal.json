@@ -50,6 +50,13 @@
       "when": 1749794219595,
       "tag": "0006_tiny_goliath",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1750437779474,
+      "tag": "0007_living_katie_power",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 {
-    "include": ["**/*.ts", "**/*.tsx"],
+    "include": ["**/*.ts", "**/*.tsx", "**/*.d.ts"],
     "compilerOptions": {
         "strict": true,
         "esModuleInterop": true,
@@ -17,6 +17,7 @@
         "paths": {
             "~/*": ["./src/*"]
         },
+        "types": ["node"],
         "noEmit": true
     }
 }
