@@ -4,10 +4,19 @@ import { reactStartCookies } from 'better-auth/react-start';
 import { db } from '~/db/db-config';
 import { sendEmail } from './email';
 import { magicLink } from 'better-auth/plugins';
+import { polar, checkout, portal, usage, webhooks } from '@polar-sh/better-auth';
+import { Polar } from '@polar-sh/sdk';
+import { user } from '~/db/schema';
+import { eq } from 'drizzle-orm';
 
 const isProd = process.env.NODE_ENV === 'production';
 
 const isEmailVerificationEnabled = process.env.ENABLE_EMAIL_VERIFICATION === 'true';
+
+const polarClient = new Polar({
+  accessToken: process.env.POLAR_ACCESS_TOKEN!,
+  server: process.env.POLAR_SERVER as 'sandbox' | 'production',
+});
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -41,6 +50,66 @@ export const auth = betterAuth({
           `,
         });
       },
+    }),
+    polar({
+      client: polarClient,
+      /** 1️⃣  Auto-create a Polar customer the moment a user signs up */
+      createCustomerOnSignUp: true,
+
+      /** 2️⃣  Optional: decorate new customers */
+      getCustomerCreateParams: async ({ user }) => ({
+        metadata: { refSource: 'tanstack-saas' },
+      }),
+
+      /** 3️⃣  Attach Polar sub-plugins */
+      use: [
+        /* Checkout flow */
+        checkout({
+          products: [
+            // TODO: Replace these with your actual Polar product IDs
+            { productId: 'prod_monthly_xxx', slug: 'pro-monthly' },
+            { productId: 'prod_yearly_xxx', slug: 'pro-yearly' },
+          ],
+          successUrl: '/success?checkout_id={CHECKOUT_ID}',
+          authenticatedUsersOnly: true,
+        }),
+
+        /* Self-service customer portal */
+        portal(),
+
+        /* (Optional) usage-based billing helpers */
+        usage(),
+
+        /* Webhook sink */
+        webhooks({
+          secret: process.env.POLAR_WEBHOOK_SECRET!,
+          onCustomerStateChanged: async (payload) => {
+            /**
+             * payload.data = Polar CustomerState
+             *
+             * 👉  Persist plan changes so the rest of your app
+             *     can do a simple role check (db.users.plan === 'pro').
+             */
+            const isPro = payload.data.activeSubscriptions.length > 0;
+            
+            // Ensure we have an external ID (user ID)
+            if (!payload.data.externalId) {
+              console.error('No external ID in Polar webhook payload');
+              return;
+            }
+            
+            await db
+              .update(user)
+              .set({
+                plan: isPro ? 'pro' : 'free',
+                subscriptionExp: isPro
+                  ? payload.data.activeSubscriptions[0].currentPeriodEnd
+                  : null,
+              })
+              .where(eq(user.id, payload.data.externalId));
+          },
+        }),
+      ],
     }),
   ],
   emailAndPassword: {

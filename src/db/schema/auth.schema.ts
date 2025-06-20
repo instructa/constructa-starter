@@ -14,6 +14,9 @@ export const user = pgTable('user', {
   updatedAt: timestamp('updated_at')
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
+  // Billing/plan fields
+  plan: text('plan').$defaultFn(() => 'free').notNull(),
+  subscriptionExp: timestamp('subscription_exp'),
 });
 
 export const session = pgTable('session', {
