@@ -2,6 +2,8 @@ import { AuthQueryProvider } from '@daveyplate/better-auth-tanstack';
 import { AuthUIProviderTanstack } from '@daveyplate/better-auth-ui/tanstack';
 // Root route file
 import type { QueryClient } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ConvexProvider } from 'convex/react';
 import {
   HeadContent,
   Link,
@@ -19,6 +21,8 @@ import { authClient } from '~/lib/auth-client';
 import { getTheme } from '~/lib/theme';
 import type { Theme } from '~/lib/theme';
 import { seo } from '~/utils/seo';
+import { convex } from '~/lib/convex-client';
+import { queryClient } from '~/lib/convex-query-client';
 import appCss from '../styles/app.css?url';
 import customCss from '../styles/custom.css?url';
 
@@ -101,20 +105,24 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="">
-        <AuthQueryProvider>
-          <ThemeProvider initial={initial}>
-            <AuthUIProviderTanstack
-              authClient={authClient}
-              redirectTo="/dashboard"
-              navigate={(href) => router.navigate({ href })}
-              replace={(href) => router.navigate({ href, replace: true })}
-              Link={({ href, ...props }) => <Link to={href} {...props} />}
-            >
-              <div className="flex min-h-svh flex-col">{children}</div>
-              <Toaster />
-            </AuthUIProviderTanstack>
-          </ThemeProvider>
-        </AuthQueryProvider>
+        <ConvexProvider client={convex}>
+          <QueryClientProvider client={queryClient}>
+            <AuthQueryProvider>
+              <ThemeProvider initial={initial}>
+                <AuthUIProviderTanstack
+                  authClient={authClient}
+                  redirectTo="/dashboard"
+                  navigate={(href) => router.navigate({ href })}
+                  replace={(href) => router.navigate({ href, replace: true })}
+                  Link={({ href, ...props }) => <Link to={href} {...props} />}
+                >
+                  <div className="flex min-h-svh flex-col">{children}</div>
+                  <Toaster />
+                </AuthUIProviderTanstack>
+              </ThemeProvider>
+            </AuthQueryProvider>
+          </QueryClientProvider>
+        </ConvexProvider>
         <Scripts />
       </body>
     </html>

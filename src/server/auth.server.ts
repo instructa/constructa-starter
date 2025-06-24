@@ -1,7 +1,7 @@
 import { betterAuth } from 'better-auth';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { convexAdapter } from '@better-auth-kit/convex';
+import { ConvexHttpClient } from 'convex/browser';
 import { reactStartCookies } from 'better-auth/react-start';
-import { db } from '~/db/db-config';
 import { sendEmail } from './email';
 import { magicLink } from 'better-auth/plugins';
 
@@ -9,10 +9,10 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const isEmailVerificationEnabled = process.env.ENABLE_EMAIL_VERIFICATION === 'true';
 
+const convexClient = new ConvexHttpClient(process.env.CONVEX_URL || process.env.VITE_CONVEX_URL!);
+
 export const auth = betterAuth({
-  database: drizzleAdapter(db, {
-    provider: 'pg',
-  }),
+  database: convexAdapter(convexClient),
   plugins: [
     reactStartCookies({
       // 1️⃣  Secure session cookie options

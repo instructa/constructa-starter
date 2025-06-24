@@ -55,36 +55,15 @@ const initCommand = defineCommand({
 
         runCommand("pnpm install", "Install dependencies")
         checkDocker()
-        console.log(yellow("ℹ️ Starting Docker containers. This might take a while..."))
-        runCommand("docker compose up -d", "Start Docker containers")
-        runCommand("npx drizzle-kit generate", "Generate Drizzle kit")
-        runCommand("npx drizzle-kit migrate", "Run Drizzle migrations")
-
-        // Check if auth schema already exists
-        const authSchemaPath = "src/server/db/auth.schema.ts"
-        const dbSchemaPath = "src/db/schema/auth.schema.ts"
-
-        if (existsSync(authSchemaPath) && existsSync(dbSchemaPath)) {
-            console.log(green("✅ Better Auth schema files already exist"))
-        } else {
-            try {
-                runCommand(
-                    "npx -y @better-auth/cli@latest generate --config src/server/auth.ts --output src/server/db/auth.schema.ts",
-                    "Generate Better Auth schema"
-                )
-            } catch (error) {
-                // Check if the files were created despite the error
-                if (existsSync(authSchemaPath)) {
-                    console.log(
-                        yellow(
-                            "⚠️ Better Auth CLI reported an error, but schema file was created successfully"
-                        )
-                    )
-                } else {
-                    throw error // Re-throw if file wasn't created
-                }
-            }
+        // Check if only Mailhog is needed
+        if (existsSync("docker-compose.yml")) {
+            console.log(yellow("ℹ️ Starting Docker container for Mailhog..."))
+            runCommand("docker compose up -d", "Start Mailhog container")
         }
+        
+        // Initialize Convex
+        console.log(yellow("ℹ️ Initializing Convex..."))
+        runCommand("npx convex dev --once", "Initialize Convex deployment")
 
         console.log(cyan("🎉 Project initialization complete!"))
     }
@@ -131,7 +110,7 @@ const recreateCommand = defineCommand({
     async run({ args }) {
         // Dynamically determine the project name and volume name
         const projectName = basename(process.cwd())
-        const volumeName = `${projectName}_ex0-data`
+        // Volume management removed - Convex is cloud-based
 
         const { wipeVolume } = args
 
@@ -206,57 +185,7 @@ const recreateCommand = defineCommand({
     }
 })
 
-const testdataCommand = defineCommand({
-    meta: {
-        name: "testdata",
-        description: "Create or delete seed test data in the database"
-    },
-    args: {
-        create: {
-            type: "boolean",
-            description: "Insert the demo data",
-            default: false
-        },
-        delete: {
-            type: "boolean",
-            description: "Remove the demo data",
-            default: false
-        }
-    },
-    async run({ args }) {
-        if (args.create === args.delete) {
-            console.error(red("Please specify exactly one of --create or --delete"))
-            process.exit(1)
-        }
-
-        if (!process.env.DATABASE_URL) {
-            console.error(red("DATABASE_URL environment variable is required"))
-            process.exit(1)
-        }
-
-        const s = p.spinner()
-        try {
-            if (args.create) {
-                s.start("Inserting test data...")
-                const { createAllTestData } = await import("../src/db/test-data")
-                await createAllTestData()
-                s.stop(green("✅ Inserted test data"))
-            } else {
-                s.start("Deleting test data...")
-                const { deleteAllTestData } = await import("../src/db/test-data")
-                await deleteAllTestData()
-                s.stop(green("✅ Deleted test data"))
-            }
-        } catch (error: unknown) {
-            if (error instanceof Error) {
-                console.error(red(`❌ ${error.message}`))
-            } else {
-                console.error(red("❌ Unknown error while managing test data"))
-            }
-            process.exit(1)
-        }
-    }
-})
+// testdata command removed - Convex handles data differently
 
 const deployCommand = defineCommand({
     meta: {
@@ -279,7 +208,6 @@ const main = defineCommand({
         stop: stopCommand,
         reload: reloadCommand,
         recreate: recreateCommand,
-        testdata: testdataCommand,
         deploy: deployCommand
     }
 })

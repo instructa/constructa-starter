@@ -1,17 +1,4 @@
 services:
-  db:
-    image: pgvector/pgvector:0.8.0-pg17
-    container_name: ex0-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: ex0
-    ports:
-      - "5432:5432"
-    volumes:
-      - ex0-data:/var/lib/postgresql/data
-
   mailhog:
     image: mailhog/mailhog:latest
     container_name: ex0-mailhog
@@ -21,6 +8,3 @@ services:
       - "8025:8025"  # Web UI
     environment:
       MH_STORAGE: memory
-
-volumes:
-  ex0-data:

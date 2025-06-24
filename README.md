@@ -1,4 +1,4 @@
-# Constructa Starter
+# Constructa Convex
 
 <div align="center">
   <img src="public/constructa_banner_.png" alt="Constructa Starter Banner" width="100%" />
@@ -17,7 +17,8 @@
 - 🔐 **Authentication** - Login/signup with email, GitHub & Google OAuth, password reset
 - 📊 **Dashboard Templates** - AI Chat, Workflows, Documents, Image Chat, Charts (`/dashboard`)
 - 🎨 **Marketing Pages** - Modern landing page with responsive design & dark/light mode
-- 💾 **Database** - Local PostgreSQL with Docker, Supabase ready, Drizzle ORM
+- 💾 **Database** - Convex backend (free tier) with live queries and automatic updates
+- 🥗 **Macro Calculator** - Example feature showing Convex queries/mutations with live updates
 - 🤖 **AI-Optimized** - Cursor rules, consistent patterns, TypeScript for better AI coding
 - 🛠️ **Developer Tools** - Hot reload, path aliases, Oxlint, Vitest, custom CLI
 
@@ -26,14 +27,14 @@
 
 ### Prerequisites
 - Download & Install **[Node.js](https://nodejs.org/en)** 18+ 
-- Download & Install **[Docker](https://www.docker.com/)** Desktop
 - **pnpm** (recommended package manager)
+- **Docker** (optional, only needed for Mailhog email testing)
 
 ### Installation
 
 ```bash
 # Clone the repository
-npx gitpick git@github.com:instructa/constructa-starter.git my-app
+npx gitpick git@github.com:instructa/constructa-convex.git my-app
 cd my-app
 
 # Install dependencies
@@ -49,7 +50,10 @@ pnpm dev
 # Create env file
 cp .env.example .env
 
-# Use CLI to kickstart your project
+# Initialize Convex (creates deployment and configures project)
+pnpm convex dev --once
+
+# Or use CLI to set up everything
 pnpm ex0 init
 ```
 
@@ -69,7 +73,7 @@ On top of that, we can layer in helpful tooling such as AI rules (Cursor Rules, 
 - **[TanStack Router](https://tanstack.com/router)** - Type-safe file-based routing
 - **[Better Auth](https://better-auth.com/)** - Modern authentication library
 - **[Better Auth UI](https://github.com/daveyplate/better-auth-ui)** - Pre-built React components for Better Auth
-- **[Drizzle ORM](https://orm.drizzle.team/)** - TypeScript ORM for PostgreSQL
+- **[Convex](https://convex.dev/)** - The reactive backend-as-a-service with TypeScript
 - **[Oxlint](https://oxc.rs/docs/guide/usage/linter.html)** - Fast JavaScript/TypeScript linter
 - **[Vitest](https://vitest.dev/)** - Lightning fast unit testing framework
 - **Cursor Rules** - Pre-configured AI coding assistant rules for optimal development experience
@@ -85,9 +89,7 @@ This project includes a custom CLI tool for common tasks. Run it using `pnpm ex0
 | `init`     | Initialize the project (dependencies, DB setup, Docker)                    |                      |
 | `stop`     | Stop running Docker containers                                             |                      |
 | `reload`   | Reload Docker containers with updated configuration                        |                      |
-| `recreate` | Recreate Docker containers and volume (WARNING: deletes all data!)         |                      |
-| `recreate` | Recreate Docker containers (use <code>--wipeVolume</code> to also delete the data volume) | `--wipeVolume` |
-| `testdata` | Create or delete seed test data in the database                            | `--create`, `--delete` |
+| `recreate` | Recreate Docker containers (for Mailhog)                                   |                      |
 | `deploy`   | [TODO] Deploy the application                                              |                      |
 
 ## 🔧 Configuration
@@ -97,8 +99,9 @@ This project includes a custom CLI tool for common tasks. Run it using `pnpm ex0
 Create a `.env` file in the root directory based on `.env.example`:
 
 ```bash
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/constructa"
+# Convex URL (auto-generated when you run convex dev)
+VITE_CONVEX_URL="https://<your-deployment>.convex.cloud"
+CONVEX_URL="https://<your-deployment>.convex.cloud"
 
 # Client-side Base URL (optional - defaults to current origin in production)
 VITE_BASE_URL="http://localhost:3000"
