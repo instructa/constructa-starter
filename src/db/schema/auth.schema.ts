@@ -1,4 +1,5 @@
 import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { timestamptz } from './_shared';
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -14,6 +15,11 @@ export const user = pgTable('user', {
   updatedAt: timestamp('updated_at')
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
+  /**
+   * Billing-related fields (managed by Polar webhook)
+   */
+  plan: text('plan').default('free').notNull(),
+  subscriptionExp: timestamptz('subscription_exp'),
 });
 
 export const session = pgTable('session', {
