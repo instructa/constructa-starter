@@ -1,3 +1,11 @@
+import type { CheckedState } from '@radix-ui/react-checkbox';
+import { useMutation } from '@tanstack/react-query';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { useServerFn } from '@tanstack/react-start';
+import { AudioLines, Book, FileText, Image as ImageIcon, Video } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+
+import * as FileUpload from '~/components/dropzone';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
@@ -9,15 +17,11 @@ import {
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Switch } from '~/components/ui/switch';
-import * as FileUpload from '~/components/dropzone';
-import { useMutation } from '@tanstack/react-query';
-import { createFileRoute, useRouter } from '@tanstack/react-router';
-import { useServerFn } from '@tanstack/react-start';
-import { AudioLines, Book, FileText, Image as ImageIcon, Video } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Checkbox } from '~/components/ui/checkbox';
 
 import {
   completeDocumentUpload,
+  deleteDocuments,
   directDocumentUpload,
   initDocumentUpload,
   listDocuments,
@@ -45,10 +49,13 @@ function DocumentsPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [showKB, setShowKB] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const initUploadFn = useServerFn(initDocumentUpload);
   const completeUploadFn = useServerFn(completeDocumentUpload);
   const directUploadFn = useServerFn(directDocumentUpload);
+  const deleteDocumentsFn = useServerFn(deleteDocuments);
 
   const initUpload = useMutation({
     mutationFn: (input: InitDocumentUploadInput) => initUploadFn({ data: input }),
@@ -58,6 +65,19 @@ function DocumentsPage() {
   });
   const directUpload = useMutation({
     mutationFn: (input: DirectDocumentUploadInput) => directUploadFn({ data: input }),
+  });
+  const deleteFilesMutation = useMutation({
+    mutationFn: (ids: string[]) => deleteDocumentsFn({ data: { ids } }),
+    onMutate: () => {
+      setDeleteError(null);
+    },
+    onSuccess: async () => {
+      setSelectedFiles(new Set());
+      await router.invalidate();
+    },
+    onError: (err: unknown) => {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete files');
+    },
   });
 
   const filtered = useMemo(() => {
@@ -69,6 +89,16 @@ function DocumentsPage() {
     });
   }, [files, search]);
 
+  const selectedIds = useMemo(() => Array.from(selectedFiles), [selectedFiles]);
+  const selectedCount = selectedIds.length;
+  const selectAllState = useMemo<CheckedState>(() => {
+    if (filtered.length === 0) return false;
+    const allSelected = filtered.every((file) => selectedFiles.has(file.id));
+    if (allSelected) return true;
+    const noneSelected = filtered.every((file) => !selectedFiles.has(file.id));
+    return noneSelected ? false : 'indeterminate';
+  }, [filtered, selectedFiles]);
+
   const formatFileSize = (size?: number | null) => {
     if (!size || size <= 0) return '0 B';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -79,6 +109,50 @@ function DocumentsPage() {
   };
 
   const uploading = initUpload.isPending || completeUpload.isPending || directUpload.isPending;
+  const deleting = deleteFilesMutation.isPending;
+
+  const handleToggleAll = useCallback(
+    (next: CheckedState) => {
+      const shouldSelect = next === true || next === 'indeterminate';
+      setSelectedFiles((prev) => {
+        const updated = new Set(prev);
+        if (shouldSelect) {
+          filtered.forEach((file) => updated.add(file.id));
+        } else {
+          filtered.forEach((file) => updated.delete(file.id));
+        }
+        return updated;
+      });
+    },
+    [filtered],
+  );
+
+  const handleToggleFile = useCallback((fileId: string, next: CheckedState) => {
+    const shouldSelect = next === true || next === 'indeterminate';
+    setSelectedFiles((prev) => {
+      const updated = new Set(prev);
+      if (shouldSelect) {
+        updated.add(fileId);
+      } else {
+        updated.delete(fileId);
+      }
+      return updated;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedFiles(new Set());
+    setDeleteError(null);
+  }, []);
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0 || deleting) return;
+    try {
+      await deleteFilesMutation.mutateAsync(selectedIds);
+    } catch (err) {
+      // handled in onError
+    }
+  };
 
   const handleUploadDoc = async () => {
     if (filesToUpload.length === 0) return;
@@ -183,7 +257,7 @@ function DocumentsPage() {
         </aside>
 
         {/* right pane */}
-        <main className="flex flex-1 flex-col overflow-hidden">
+        <main className="relative flex flex-1 flex-col overflow-hidden">
           {/* toolbar */}
           <div className="flex items-center justify-between gap-2 border-b px-6 py-4">
             <Input
@@ -214,6 +288,14 @@ function DocumentsPage() {
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-background">
                 <tr className="border-b text-muted-foreground">
+                  <th className="w-10 px-2 py-2 text-left font-normal">
+                    <Checkbox
+                      aria-label="Select all"
+                      checked={selectAllState}
+                      onCheckedChange={handleToggleAll}
+                      disabled={filtered.length === 0 || deleting}
+                    />
+                  </th>
                   <th className="py-2 text-left font-normal">File</th>
                   <th className="py-2 text-left font-normal">Created At</th>
                   <th className="py-2 text-left font-normal">Size</th>
@@ -226,6 +308,14 @@ function DocumentsPage() {
                       key={d.id}
                       className="border-b transition-colors last:border-b-0 hover:bg-muted/50"
                     >
+                      <td className="w-10 px-2">
+                        <Checkbox
+                          aria-label={`Select ${d.name}`}
+                          checked={selectedFiles.has(d.id)}
+                          onCheckedChange={(value) => handleToggleFile(d.id, value)}
+                          disabled={deleting}
+                        />
+                      </td>
                       <td className="py-3">
                         <div className="flex items-center gap-2">
                           <FileText className="size-4 text-muted-foreground" />
@@ -240,7 +330,7 @@ function DocumentsPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={3} className="py-4 text-center">
+                    <td colSpan={4} className="py-4 text-center">
                       No documents found.
                     </td>
                   </tr>
@@ -248,6 +338,37 @@ function DocumentsPage() {
               </tbody>
             </table>
           </div>
+
+          {selectedCount > 0 && (
+            <div className="pointer-events-auto absolute bottom-6 right-6 z-20 w-full max-w-md rounded-md border bg-background/95 px-4 py-3 shadow-lg backdrop-blur">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium text-sm">{selectedCount} selected</p>
+                  {deleteError && (
+                    <p className="mt-1 text-xs text-destructive">{deleteError}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearSelection}
+                    disabled={deleting}
+                  >
+                    Clear
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDeleteSelected}
+                    disabled={deleting}
+                  >
+                    {deleting ? 'Deleting…' : 'Delete'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 

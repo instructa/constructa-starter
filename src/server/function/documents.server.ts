@@ -10,7 +10,7 @@ import { files } from '~/db/schema/file.schema';
 import { documents } from '~/db/schema/document.schema';
 import { auth } from '~/server/auth.server';
 import { S3StaticFileImpl } from '~/server/s3/s3';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 
 const fileService = new S3StaticFileImpl();
 
@@ -66,9 +66,14 @@ const directUploadSchema = z.object({
   mimeType: z.string().optional(),
 });
 
+const deleteDocumentsSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1),
+});
+
 export type InitDocumentUploadInput = z.infer<typeof initUploadSchema>;
 export type CompleteDocumentUploadInput = z.infer<typeof completeUploadSchema>;
 export type DirectDocumentUploadInput = z.infer<typeof directUploadSchema>;
+export type DeleteDocumentsInput = z.infer<typeof deleteDocumentsSchema>;
 
 const normalizeInput = <TSchema extends z.ZodTypeAny>(
   input: unknown,
@@ -321,4 +326,43 @@ export const directDocumentUpload = createServerFn({ method: 'POST' })
       .where(eq(files.id, fileRecord.id));
 
     return { id: fileRecord.id, url };
+  });
+
+export const deleteDocuments = createServerFn({ method: 'POST' })
+  .validator((input) => normalizeInput(input, deleteDocumentsSchema))
+  .handler(async ({ ids }) => {
+    const user = await requireUser();
+    const uniqueIds = Array.from(new Set(ids));
+
+    if (uniqueIds.length === 0) {
+      return { deleted: 0 };
+    }
+
+    const existing = await db
+      .select({ id: files.id, key: files.key })
+      .from(files)
+      .where(and(eq(files.clientId, user.id), inArray(files.id, uniqueIds)));
+
+    if (existing.length === 0) {
+      return { deleted: 0 };
+    }
+
+    const deleted = await db
+      .delete(files)
+      .where(inArray(files.id, existing.map((file) => file.id)))
+      .returning({ id: files.id, key: files.key });
+
+    const keys = Array.from(
+      new Set(
+        [...existing, ...deleted]
+          .map((file) => file.key)
+          .filter((key): key is string => Boolean(key)),
+      ),
+    );
+
+    if (keys.length > 0) {
+      await Promise.allSettled(keys.map((key) => fileService.deleteFile(key)));
+    }
+
+    return { deleted: deleted.length || existing.length };
   });
