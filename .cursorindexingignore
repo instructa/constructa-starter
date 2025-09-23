@@ -1,3 +1,5 @@
 docs/**
 cli/**
 drizzle/** */
+docs/**
+docs-libs/**

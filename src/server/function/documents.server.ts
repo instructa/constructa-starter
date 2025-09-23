@@ -66,9 +66,99 @@ const directUploadSchema = z.object({
   mimeType: z.string().optional(),
 });
 
-const deleteDocumentsSchema = z.object({
-  ids: z.array(z.string().min(1)).min(1),
-});
+const deleteDocumentsSchema = z
+  .object({
+    ids: z.array(z.string().min(1)).optional(),
+    items: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1).optional(),
+            key: z.string().min(1).optional(),
+          })
+          .refine((value) => Boolean(value.id) || Boolean(value.key), 'id or key is required'),
+      )
+      .optional(),
+  })
+  .refine(
+    (value) => (value.ids && value.ids.length > 0) || (value.items && value.items.length > 0),
+    'ids or items are required',
+  );
+
+const coerceStringArray = (input: unknown) => {
+  if (Array.isArray(input)) {
+    return input
+      .map((value) => (typeof value === 'string' ? value : String(value ?? '')).trim())
+      .filter((value) => value.length > 0);
+  }
+
+  if (input && typeof input === 'object' && '$values' in (input as Record<string, unknown>)) {
+    const values = (input as { $values?: unknown }).$values;
+    if (Array.isArray(values)) {
+      return coerceStringArray(values);
+    }
+  }
+
+  if (input && typeof input === 'object') {
+    const values = Object.values(input as Record<string, unknown>);
+    if (values.length > 0) {
+      return coerceStringArray(values);
+    }
+  }
+
+  if (typeof input === 'string') {
+    try {
+      const parsed = JSON.parse(input);
+      return coerceStringArray(parsed);
+    } catch (error) {
+      console.warn('[deleteDocuments] failed to parse stringified ids payload', error);
+    }
+  }
+
+  return [] as string[];
+};
+
+const coerceItemArray = (input: unknown): { id?: string; key?: string }[] => {
+  if (Array.isArray(input)) {
+    return input
+      .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+      .map((item) => {
+        const id = typeof item.id === 'string' ? item.id.trim() : undefined;
+        const key = typeof item.key === 'string' ? item.key.trim() : undefined;
+
+        return {
+          ...(id ? { id } : {}),
+          ...(key ? { key } : {}),
+        };
+      })
+      .filter((item) => item.id || item.key);
+  }
+
+  if (input && typeof input === 'object' && '$values' in (input as Record<string, unknown>)) {
+    const values = (input as { $values?: unknown }).$values;
+    if (Array.isArray(values)) {
+      return coerceItemArray(values);
+    }
+  }
+
+  if (input && typeof input === 'object') {
+    const values = Object.values(input as Record<string, unknown>);
+    if (values.length > 0) {
+      return coerceItemArray(values);
+    }
+  }
+
+  if (typeof input === 'string') {
+    try {
+      const parsed = JSON.parse(input);
+      return coerceItemArray(parsed);
+    } catch (error) {
+      console.warn('[deleteDocuments] failed to parse stringified items payload', error);
+    }
+  }
+
+  return [];
+};
 
 export type InitDocumentUploadInput = z.infer<typeof initUploadSchema>;
 export type CompleteDocumentUploadInput = z.infer<typeof completeUploadSchema>;
@@ -78,7 +168,9 @@ export type DeleteDocumentsInput = z.infer<typeof deleteDocumentsSchema>;
 const normalizeInput = <TSchema extends z.ZodTypeAny>(
   input: unknown,
   schema: TSchema,
+  preprocess?: (payload: unknown) => unknown,
 ): z.infer<TSchema> => {
+  console.log('[normalizeInput] raw input', input);
   const rawCandidate =
     input instanceof FormData
       ? Object.fromEntries(input.entries())
@@ -110,7 +202,11 @@ const normalizeInput = <TSchema extends z.ZodTypeAny>(
     }
   }
 
-  return schema.parse(payload);
+  const processed = preprocess ? preprocess(payload) : payload;
+
+  console.log('[normalizeInput] processed payload', processed);
+
+  return schema.parse(processed);
 };
 
 export const listDocuments = createServerFn({ method: 'GET' }).handler(async () => {
@@ -328,41 +424,96 @@ export const directDocumentUpload = createServerFn({ method: 'POST' })
     return { id: fileRecord.id, url };
   });
 
-export const deleteDocuments = createServerFn({ method: 'POST' })
-  .validator((input) => normalizeInput(input, deleteDocumentsSchema))
-  .handler(async ({ ids }) => {
-    const user = await requireUser();
-    const uniqueIds = Array.from(new Set(ids));
+const preprocessDeletePayload = (payload: unknown) => {
+  if (!payload || typeof payload !== 'object') return payload;
 
-    if (uniqueIds.length === 0) {
+  const record = { ...(payload as Record<string, unknown>) };
+
+  if ('items' in record) {
+    const coercedItems = coerceItemArray(record.items);
+    console.log('[preprocessDeletePayload] coerced items len', coercedItems.length);
+    if (coercedItems.length > 0) {
+      record.items = coercedItems;
+    } else {
+      delete record.items;
+    }
+  }
+
+  if ('ids' in record) {
+    const coercedIds = coerceStringArray(record.ids);
+    console.log('[preprocessDeletePayload] coerced ids len', coercedIds.length);
+    if (coercedIds.length > 0) {
+      record.ids = coercedIds;
+    } else {
+      delete record.ids;
+    }
+  }
+
+  return record;
+};
+
+export const deleteDocuments = createServerFn({ method: 'POST' })
+  .handler(async (payload) => {
+    const user = await requireUser();
+
+    const { ids, items } = normalizeInput(payload, deleteDocumentsSchema, preprocessDeletePayload);
+
+    console.log('[deleteDocuments] parsed ids', ids, 'parsed items length', items?.length);
+
+    const normalizedItems = coerceItemArray(items);
+    const normalizedIds = coerceStringArray(ids);
+
+    console.log('[deleteDocuments] normalized items len', normalizedItems.length, 'normalized ids len', normalizedIds.length);
+
+    const idSet = new Set(
+      normalizedItems
+        .map((item) => item.id?.trim())
+        .filter((value): value is string => Boolean(value)),
+    );
+    const keySet = new Set(
+      normalizedItems
+        .map((item) => item.key?.trim())
+        .filter((value): value is string => Boolean(value)),
+    );
+
+    normalizedIds.forEach((id) => {
+      if (id) {
+        idSet.add(id);
+      }
+    });
+
+    if (idSet.size === 0 && keySet.size === 0) {
       return { deleted: 0 };
+    }
+
+    const conditions: Array<ReturnType<typeof inArray> | ReturnType<typeof eq>> = [
+      eq(files.clientId, user.id),
+    ];
+    if (idSet.size > 0) {
+      conditions.push(inArray(files.id, Array.from(idSet)));
+    }
+    if (keySet.size > 0) {
+      conditions.push(inArray(files.key, Array.from(keySet)));
     }
 
     const existing = await db
       .select({ id: files.id, key: files.key })
       .from(files)
-      .where(and(eq(files.clientId, user.id), inArray(files.id, uniqueIds)));
+      .where(conditions.length === 1 ? conditions[0] : and(...conditions));
 
     if (existing.length === 0) {
       return { deleted: 0 };
     }
 
-    const deleted = await db
-      .delete(files)
-      .where(inArray(files.id, existing.map((file) => file.id)))
-      .returning({ id: files.id, key: files.key });
+    await db.delete(files).where(inArray(files.id, existing.map((file) => file.id)));
 
     const keys = Array.from(
-      new Set(
-        [...existing, ...deleted]
-          .map((file) => file.key)
-          .filter((key): key is string => Boolean(key)),
-      ),
+      new Set(existing.map((file) => file.key).filter((key): key is string => Boolean(key))),
     );
 
     if (keys.length > 0) {
       await Promise.allSettled(keys.map((key) => fileService.deleteFile(key)));
     }
 
-    return { deleted: deleted.length || existing.length };
+    return { deleted: existing.length };
   });

@@ -27,6 +27,7 @@ import {
   listDocuments,
   type CompleteDocumentUploadInput,
   type DirectDocumentUploadInput,
+  type DeleteDocumentsInput,
   type InitDocumentUploadInput,
 } from '~/server/function/documents.server';
 export const Route = createFileRoute('/dashboard/documents')({
@@ -36,6 +37,10 @@ export const Route = createFileRoute('/dashboard/documents')({
   },
   component: DocumentsPage,
 });
+
+type ListedFile = Awaited<ReturnType<typeof listDocuments>>[number];
+type SelectableFile = { id: ListedFile['id']; key?: ListedFile['key'] };
+type DeleteDocumentsPayload = NonNullable<DeleteDocumentsInput['items']>;
 
 function DocumentsPage() {
   const router = useRouter();
@@ -49,7 +54,9 @@ function DocumentsPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [showKB, setShowKB] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [selectedFiles, setSelectedFiles] = useState<
+    Map<string, DeleteDocumentsPayload[number]>
+  >(new Map());
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const initUploadFn = useServerFn(initDocumentUpload);
@@ -67,12 +74,13 @@ function DocumentsPage() {
     mutationFn: (input: DirectDocumentUploadInput) => directUploadFn({ data: input }),
   });
   const deleteFilesMutation = useMutation({
-    mutationFn: (ids: string[]) => deleteDocumentsFn({ data: { ids } }),
+    mutationFn: (payload: DeleteDocumentsPayload) =>
+      deleteDocumentsFn({ data: { items: payload } }),
     onMutate: () => {
       setDeleteError(null);
     },
     onSuccess: async () => {
-      setSelectedFiles(new Set());
+      setSelectedFiles(new Map());
       await router.invalidate();
     },
     onError: (err: unknown) => {
@@ -89,8 +97,8 @@ function DocumentsPage() {
     });
   }, [files, search]);
 
-  const selectedIds = useMemo(() => Array.from(selectedFiles), [selectedFiles]);
-  const selectedCount = selectedIds.length;
+  const selectedEntries = useMemo(() => Array.from(selectedFiles.values()), [selectedFiles]);
+  const selectedCount = selectedEntries.length;
   const selectAllState = useMemo<CheckedState>(() => {
     if (filtered.length === 0) return false;
     const allSelected = filtered.every((file) => selectedFiles.has(file.id));
@@ -115,9 +123,11 @@ function DocumentsPage() {
     (next: CheckedState) => {
       const shouldSelect = next === true || next === 'indeterminate';
       setSelectedFiles((prev) => {
-        const updated = new Set(prev);
+        const updated = new Map(prev);
         if (shouldSelect) {
-          filtered.forEach((file) => updated.add(file.id));
+          filtered.forEach((file) => {
+            updated.set(file.id, { id: file.id, key: file.key ?? undefined });
+          });
         } else {
           filtered.forEach((file) => updated.delete(file.id));
         }
@@ -127,28 +137,28 @@ function DocumentsPage() {
     [filtered],
   );
 
-  const handleToggleFile = useCallback((fileId: string, next: CheckedState) => {
+  const handleToggleFile = useCallback((file: SelectableFile, next: CheckedState) => {
     const shouldSelect = next === true || next === 'indeterminate';
     setSelectedFiles((prev) => {
-      const updated = new Set(prev);
+      const updated = new Map(prev);
       if (shouldSelect) {
-        updated.add(fileId);
+        updated.set(file.id, { id: file.id, key: file.key ?? undefined });
       } else {
-        updated.delete(fileId);
+        updated.delete(file.id);
       }
       return updated;
     });
   }, []);
 
   const clearSelection = useCallback(() => {
-    setSelectedFiles(new Set());
+    setSelectedFiles(new Map());
     setDeleteError(null);
   }, []);
 
   const handleDeleteSelected = async () => {
-    if (selectedIds.length === 0 || deleting) return;
+    if (selectedEntries.length === 0 || deleting) return;
     try {
-      await deleteFilesMutation.mutateAsync(selectedIds);
+      await deleteFilesMutation.mutateAsync(selectedEntries);
     } catch (err) {
       // handled in onError
     }
@@ -312,7 +322,7 @@ function DocumentsPage() {
                         <Checkbox
                           aria-label={`Select ${d.name}`}
                           checked={selectedFiles.has(d.id)}
-                          onCheckedChange={(value) => handleToggleFile(d.id, value)}
+                          onCheckedChange={(value) => handleToggleFile(d, value)}
                           disabled={deleting}
                         />
                       </td>

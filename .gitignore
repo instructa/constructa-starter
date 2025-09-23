@@ -43,6 +43,14 @@ logs
 /AGENTS.md.bak
 /CLAUDE.md
 /CLAUDE.md.bak
+/src/.codex/config.toml
+/src/.codex/config.toml.bak
+/src/.cursor/rules/ruler_cursor_instructions.mdc
+/src/.cursor/rules/ruler_cursor_instructions.mdc.bak
+/src/AGENTS.md
+/src/AGENTS.md.bak
+/src/CLAUDE.md
+/src/CLAUDE.md.bak
 /src/components/.codex/config.toml
 /src/components/.codex/config.toml.bak
 /src/components/.cursor/rules/ruler_cursor_instructions.mdc
@@ -75,4 +83,12 @@ logs
 /src/routes/AGENTS.md.bak
 /src/routes/CLAUDE.md
 /src/routes/CLAUDE.md.bak
+/src/server/function/.codex/config.toml
+/src/server/function/.codex/config.toml.bak
+/src/server/function/.cursor/rules/ruler_cursor_instructions.mdc
+/src/server/function/.cursor/rules/ruler_cursor_instructions.mdc.bak
+/src/server/function/AGENTS.md
+/src/server/function/AGENTS.md.bak
+/src/server/function/CLAUDE.md
+/src/server/function/CLAUDE.md.bak
 # END Ruler Generated Files

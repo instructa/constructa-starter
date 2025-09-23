@@ -1,0 +1,1 @@
+moved to docs/best-practices/tanstack-start/tanstack-start-best-practices.md

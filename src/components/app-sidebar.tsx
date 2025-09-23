@@ -1,15 +1,4 @@
 import { Link } from '@tanstack/react-router';
-import {
-  Camera,
-  File,
-  FileText,
-  HelpCircle,
-  LayoutDashboard,
-  Search,
-  Settings,
-  Workflow,
-} from 'lucide-react';
-import { Bot, Image } from 'lucide-react';
 import type * as React from 'react';
 import { NavMain } from '~/components/nav-main';
 import { NavUser } from '~/components/nav-user';
@@ -22,6 +11,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '~/components/ui/sidebar';
+import DashboardIcon from 'virtual:icons/ri/dashboard-line';
+import ChatIcon from 'virtual:icons/ri/chat-3-line';
+import ImageIcon from 'virtual:icons/ri/image-line';
+import FileTextIcon from 'virtual:icons/ri/file-text-line';
+import FlowChartIcon from 'virtual:icons/ri/flow-chart';
+import CameraIcon from 'virtual:icons/ri/camera-line';
+import FileListIcon from 'virtual:icons/ri/file-list-line';
+import FileCodeIcon from 'virtual:icons/ri/file-code-line';
+import HomeSmileIcon from 'virtual:icons/ri/home-smile-line';
 
 const data = {
   user: {
@@ -33,33 +31,33 @@ const data = {
     {
       title: 'Dashboard',
       url: '/dashboard/charts',
-      icon: LayoutDashboard,
+      icon: DashboardIcon,
     },
     {
       title: 'Chat',
       url: '/dashboard/chat',
-      icon: Bot,
+      icon: ChatIcon,
     },
     {
       title: 'Image Chat',
       url: '/dashboard/image-chat',
-      icon: Image,
+      icon: ImageIcon,
     },
     {
       title: 'Documents',
       url: '/dashboard/documents',
-      icon: FileText,
+      icon: FileTextIcon,
     },
     {
       title: 'Workflow',
       url: '/dashboard/workflow',
-      icon: Workflow,
+      icon: FlowChartIcon,
     },
   ],
   navClouds: [
     {
       title: 'Capture',
-      icon: Camera,
+      icon: CameraIcon,
       isActive: true,
       url: '#',
       items: [
@@ -75,7 +73,7 @@ const data = {
     },
     {
       title: 'Proposal',
-      icon: FileText,
+      icon: FileListIcon,
       url: '#',
       items: [
         {
@@ -90,7 +88,7 @@ const data = {
     },
     {
       title: 'Prompts',
-      icon: File,
+      icon: FileCodeIcon,
       url: '#',
       items: [
         {
@@ -114,7 +112,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
               <Link to="/">
-                <LayoutDashboard className="!size-5" />
+                <HomeSmileIcon className="!size-5" />
                 <span className="font-semibold text-base">ex0 AI</span>
               </Link>
             </SidebarMenuButton>
