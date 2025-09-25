@@ -26,7 +26,7 @@
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Download & Install **[Node.js](https://nodejs.org/en)** 18+ 
+- Download & Install **[Node.js](https://nodejs.org/en)** 22.12+ (required for TanStack Start RC1)
 - Download & Install **[Docker](https://www.docker.com/)** Desktop
 - **pnpm** (recommended package manager)
 
@@ -63,11 +63,11 @@ On top of that, we can layer in helpful tooling such as AI rules (Cursor Rules, 
 
 ## Tech Stack
 
-- **[TanStack Start](https://tanstack.com/start)** - Modern full-stack React framework
 - **[shadcn/ui](https://ui.shadcn.com/)** - Beautiful, accessible component library
 - **[Tailwind CSS v4](https://tailwindcss.com/)** - Modern utility-first CSS framework
 - **[TypeScript](https://typescriptlang.org/)** - Full type safety
-- **[TanStack Router](https://tanstack.com/router)** - Type-safe file-based routing
+- **[TanStack Router](https://tanstack.com/router)** - Type-safe file-based routing (v1.132.x)
+- **[TanStack Start](https://tanstack.com/start)** - Modern full-stack React framework (RC1)
 - **[Better Auth](https://better-auth.com/)** - Modern authentication library
 - **[Better Auth UI](https://github.com/daveyplate/better-auth-ui)** - Pre-built React components for Better Auth
 - **[Drizzle ORM](https://orm.drizzle.team/)** - TypeScript ORM for PostgreSQL
