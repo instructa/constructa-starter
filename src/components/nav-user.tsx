@@ -4,9 +4,12 @@ import { useCallback } from 'react';
 import RiGithubFill from '~icons/ri/github-fill';
 import RiMore from '~icons/ri/more-line';
 import RiListSettingsLine from '~icons/ri/list-settings-line';
+import RiBankCard2Line from '~icons/ri/bank-card-2-line';
+import RiBillLine from '~icons/ri/bill-line';
 import RiLogoutBox from '~icons/ri/logout-box-line';
 import RiUser from '~icons/ri/user-line';
 import { useRouter, useRouterState } from '@tanstack/react-router';
+import { authClient } from '~/lib/auth-client';
 
 import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar';
 import {
@@ -70,6 +73,16 @@ export function NavUser({
     [router]
   );
 
+  const handleLogout = useCallback(async () => {
+    try {
+      await authClient.signOut();
+      // Navigate to the home page or sign-in page after logout
+      router.navigate({ to: '/' });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  }, [router]);
+
   return (
     <>
       <SidebarMenu>
@@ -111,9 +124,12 @@ export function NavUser({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
+                <DropdownMenuLabel className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Workspace
+                </DropdownMenuLabel>
                 <DropdownMenuItem onSelect={() => openSettingsDialog('account')}>
                   <RiUser />
-                  Account settings
+                  Account
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => openSettingsDialog('preferences')}>
                   <RiListSettingsLine />
@@ -121,7 +137,21 @@ export function NavUser({
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Billing
+                </DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => openSettingsDialog('plans')}>
+                  <RiBankCard2Line />
+                  Plans & subscription
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => openSettingsDialog('billing')}>
+                  <RiBillLine />
+                  Billing & invoices
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleLogout}>
                 <RiLogoutBox />
                 Log out
               </DropdownMenuItem>

@@ -21,6 +21,8 @@ import type { Theme } from '~/lib/theme';
 import { seo } from '~/utils/seo';
 import appCss from '../styles/app.css?url';
 import customCss from '../styles/custom.css?url';
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
@@ -85,6 +87,8 @@ function RootComponent() {
   return (
     <RootDocument>
       <Outlet />
+      <ReactQueryDevtools initialIsOpen={false} />
+      <TanStackRouterDevtools />
     </RootDocument>
   );
 }
@@ -115,6 +119,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             </AuthUIProviderTanstack>
           </ThemeProvider>
         </AuthQueryProvider>
+
         <Scripts />
       </body>
     </html>
