@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
-import { getWebRequest } from '@tanstack/react-start/server';
+import { getRequest } from '@tanstack/react-start/server';
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import { z } from 'zod';
@@ -15,7 +15,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm';
 const fileService = new S3StaticFileImpl();
 
 const requireUser = async () => {
-  const { headers } = getWebRequest();
+  const { headers } = getRequest();
   const session = await auth.api.getSession({ headers });
 
   if (!session?.user) {
@@ -227,7 +227,7 @@ export const listDocuments = createServerFn({ method: 'GET' }).handler(async () 
 });
 
 export const initDocumentUpload = createServerFn({ method: 'POST' })
-  .validator((input) => normalizeInput(input, initUploadSchema))
+  .inputValidator((input) => normalizeInput(input, initUploadSchema))
   .handler(async (input) => {
     const user = await requireUser();
 
@@ -284,7 +284,7 @@ export const initDocumentUpload = createServerFn({ method: 'POST' })
   });
 
 export const completeDocumentUpload = createServerFn({ method: 'POST' })
-  .validator((input) => normalizeInput(input, completeUploadSchema))
+  .inputValidator((input) => normalizeInput(input, completeUploadSchema))
   .handler(async (payload) => {
     const data = (payload && typeof payload === 'object' && 'data' in (payload as Record<string, unknown>))
       ? ((payload as Record<string, unknown>).data as CompleteDocumentUploadInput)
@@ -337,7 +337,7 @@ export const completeDocumentUpload = createServerFn({ method: 'POST' })
   });
 
 export const directDocumentUpload = createServerFn({ method: 'POST' })
-  .validator((input) => normalizeInput(input, directUploadSchema))
+  .inputValidator((input) => normalizeInput(input, directUploadSchema))
   .handler(async (payload) => {
     const data = (payload && typeof payload === 'object' && 'data' in (payload as Record<string, unknown>))
       ? ((payload as Record<string, unknown>).data as DirectDocumentUploadInput)

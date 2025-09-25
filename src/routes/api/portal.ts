@@ -1,5 +1,5 @@
 import { CustomerPortal } from '@polar-sh/tanstack-start';
-import { createServerFileRoute } from '@tanstack/react-start/server';
+import { createFileRoute } from '@tanstack/react-router';
 import { polarEnv } from '~/conf/polar';
 import { upsertPolarCustomerByExternalId } from '~/server/polar';
 import { requireUser } from '~/server/require-user';
@@ -14,6 +14,10 @@ const portalHandler = CustomerPortal({
   },
 });
 
-export const ServerRoute = createServerFileRoute('/api/portal').methods({
-  GET: async (ctx) => portalHandler(ctx),
+export const Route = createFileRoute('/api/portal')({
+  server: {
+    handlers: {
+      GET: async (ctx) => portalHandler(ctx),
+    },
+  },
 });

@@ -1,4 +1,4 @@
-import { createServerFileRoute } from '@tanstack/react-start/server';
+import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { db } from '~/db/db-config';
@@ -20,67 +20,71 @@ const BillingSchema = z.object({
 
 type BillingPayload = z.infer<typeof BillingSchema>;
 
-export const ServerRoute = createServerFileRoute('/api/settings/billing').methods({
-  GET: async ({ request }) => {
-    const user = await requireUser(request);
+export const Route = createFileRoute('/api/settings/billing')({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        const user = await requireUser(request);
 
-    const [info] = await db.select().from(billingInfo).where(eq(billingInfo.userId, user.id));
+        const [info] = await db.select().from(billingInfo).where(eq(billingInfo.userId, user.id));
 
-    const profile: BillingPayload = {
-      billingEmail: info?.billingEmail ?? user.email,
-      company: info?.company ?? '',
-      line1: info?.line1 ?? '',
-      line2: info?.line2 ?? '',
-      city: info?.city ?? '',
-      state: info?.state ?? '',
-      postalCode: info?.postalCode ?? '',
-      country: info?.country ?? '',
-      vat: info?.vat ?? '',
-    };
+        const profile: BillingPayload = {
+          billingEmail: info?.billingEmail ?? user.email,
+          company: info?.company ?? '',
+          line1: info?.line1 ?? '',
+          line2: info?.line2 ?? '',
+          city: info?.city ?? '',
+          state: info?.state ?? '',
+          postalCode: info?.postalCode ?? '',
+          country: info?.country ?? '',
+          vat: info?.vat ?? '',
+        };
 
-    return Response.json({ profile, invoices: [] });
-  },
-  PATCH: async ({ request }) => {
-    const user = await requireUser(request);
-    const body = await request.json();
-    const parsed = BillingSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return new Response('Invalid payload', { status: 422 });
-    }
-
-    const data = parsed.data;
-
-    await db
-      .insert(billingInfo)
-      .values({ userId: user.id, ...data })
-      .onConflictDoUpdate({
-        target: billingInfo.userId,
-        set: { ...data, updatedAt: new Date() },
-      });
-
-    await upsertPolarCustomerByExternalId({ id: user.id, email: data.billingEmail, name: user.name });
-
-    await polar.customers.updateExternal({
-      externalId: user.id,
-      customerUpdateExternalID: {
-        email: data.billingEmail,
-        name: user.name ?? null,
-        billingAddress: data.line1
-          ? {
-              line1: data.line1 ?? undefined,
-              line2: data.line2 ?? undefined,
-              postalCode: data.postalCode ?? undefined,
-              city: data.city ?? undefined,
-              state: data.state ?? undefined,
-              country: data.country ?? undefined,
-            }
-          : null,
-        taxId: data.vat ? [data.vat, guessVatType(data.vat)] : null,
+        return Response.json({ profile, invoices: [] });
       },
-    });
+      PATCH: async ({ request }) => {
+        const user = await requireUser(request);
+        const body = await request.json();
+        const parsed = BillingSchema.safeParse(body);
 
-    return new Response(null, { status: 204 });
+        if (!parsed.success) {
+          return new Response('Invalid payload', { status: 422 });
+        }
+
+        const data = parsed.data;
+
+        await db
+          .insert(billingInfo)
+          .values({ userId: user.id, ...data })
+          .onConflictDoUpdate({
+            target: billingInfo.userId,
+            set: { ...data, updatedAt: new Date() },
+          });
+
+        await upsertPolarCustomerByExternalId({ id: user.id, email: data.billingEmail, name: user.name });
+
+        await polar.customers.updateExternal({
+          externalId: user.id,
+          customerUpdateExternalID: {
+            email: data.billingEmail,
+            name: user.name ?? null,
+            billingAddress: data.line1
+              ? {
+                  line1: data.line1 ?? undefined,
+                  line2: data.line2 ?? undefined,
+                  postalCode: data.postalCode ?? undefined,
+                  city: data.city ?? undefined,
+                  state: data.state ?? undefined,
+                  country: data.country ?? undefined,
+                }
+              : null,
+            taxId: data.vat ? [data.vat, guessVatType(data.vat)] : null,
+          },
+        });
+
+        return new Response(null, { status: 204 });
+      },
+    },
   },
 });
 

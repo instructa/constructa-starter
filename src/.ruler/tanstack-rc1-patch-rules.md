@@ -1,0 +1,3 @@
+- TanStack Start RC1 regressions we must patch locally:
+  - Always restore unrestricted env loading in `vite.config.ts` (`loadEnv(..., '', )`) until the upstream regression is fixed.
+  - Keep the custom log middleware disabled (or guard `clientTime`/`serverTime` carefully) because RC1 sometimes executes the server middleware before the client context is set, leading to blank screens.
