@@ -10,7 +10,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   void import('virtual:browser-echo');
 }
 
-export function createRouter() {
+export function getRouter() {
   const queryClient = new QueryClient();
 
   return routerWithQueryClient(
@@ -27,6 +27,6 @@ export function createRouter() {
 
 declare module '@tanstack/react-router' {
   interface Register {
-    router: ReturnType<typeof createRouter>;
+    router: ReturnType<typeof getRouter>;
   }
 }

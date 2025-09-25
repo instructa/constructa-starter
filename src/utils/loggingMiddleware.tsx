@@ -14,12 +14,14 @@ const preLogMiddleware = createMiddleware()
     });
   })
   .server(async (ctx) => {
+    const clientTime = ctx.context.clientTime ?? new Date();
     const serverTime = new Date();
 
     return ctx.next({
       sendContext: {
         serverTime,
-        durationToServer: serverTime.getTime() - ctx.context.clientTime.getTime(),
+        durationToServer: serverTime.getTime() - clientTime.getTime(),
+        clientTime,
       },
     });
   });
@@ -30,11 +32,16 @@ export const logMiddleware = createMiddleware()
     const res = await ctx.next();
 
     const now = new Date();
+    const responseContext = res.context ?? {};
+    const clientTime = responseContext.clientTime ?? now;
+    const serverTime = responseContext.serverTime ?? now;
+    const durationToServer = responseContext.durationToServer ?? 0;
+
     // eslint-disable-next-line no-console
     console.log('Client Req/Res:', {
-      duration: res.context.clientTime.getTime() - now.getTime(),
-      durationToServer: res.context.durationToServer,
-      durationFromServer: now.getTime() - res.context.serverTime.getTime(),
+      duration: clientTime.getTime() - now.getTime(),
+      durationToServer,
+      durationFromServer: now.getTime() - serverTime.getTime(),
     });
 
     return res;

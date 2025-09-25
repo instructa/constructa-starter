@@ -3,6 +3,9 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
@@ -62,9 +65,9 @@
     "@t3-oss/env-core": "^0.13.8",
     "@tanstack/react-query": "^5.89.0",
     "@tanstack/react-query-devtools": "^5.89.0",
-    "@tanstack/react-router": "^1.131.49",
-    "@tanstack/react-router-devtools": "^1.131.49",
-    "@tanstack/react-start": "^1.131.49",
+    "@tanstack/react-router": "^1.132.6",
+    "@tanstack/react-router-devtools": "^1.132.6",
+    "@tanstack/react-start": "^1.132.6",
     "@tanstack/react-table": "^8.21.3",
     "@types/nodemailer": "^7.0.1",
     "ai": "^5.0.47",

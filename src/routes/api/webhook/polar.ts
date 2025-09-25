@@ -1,5 +1,5 @@
 import { Webhooks } from '@polar-sh/tanstack-start';
-import { createServerFileRoute } from '@tanstack/react-start/server';
+import { createFileRoute } from '@tanstack/react-router';
 import { eq } from 'drizzle-orm';
 import { polarEnv } from '~/conf/polar';
 import { addPurchasedCredits, resetMonthlyAllotment } from '~/server/credits';
@@ -168,6 +168,10 @@ const webhookHandler = Webhooks({
   },
 });
 
-export const ServerRoute = createServerFileRoute('/api/webhook/polar').methods({
-  POST: async (ctx) => webhookHandler(ctx),
+export const Route = createFileRoute('/api/webhook/polar')({
+  server: {
+    handlers: {
+      POST: async (ctx) => webhookHandler(ctx),
+    },
+  },
 });

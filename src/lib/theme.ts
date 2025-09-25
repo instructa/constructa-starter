@@ -12,7 +12,7 @@ export const getTheme = createServerFn().handler(async () => {
 
 /** Persist a new theme (POST from the client) */
 export const setTheme = createServerFn({ method: "POST" })
-    .validator((data: unknown): Theme => {
+    .inputValidator((data: unknown): Theme => {
         if (data !== "light" && data !== "dark" && data !== "system") {
             throw new Error("theme must be light | dark | system")
         }

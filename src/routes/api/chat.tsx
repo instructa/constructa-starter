@@ -1,5 +1,5 @@
 import { json } from '@tanstack/react-start';
-import { createServerFileRoute } from '@tanstack/react-start/server';
+import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 import { mastra } from '~/mastra';
 
@@ -19,29 +19,33 @@ const ChatPayloadSchema = z
   })
   .passthrough();
 
-export const ServerRoute = createServerFileRoute('/api/chat').methods({
-  POST: async ({ request }) => {
-    try {
-      const body = await request.json();
-      const { messages } = ChatPayloadSchema.parse(body);
+export const Route = createFileRoute('/api/chat')({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        try {
+          const body = await request.json();
+          const { messages } = ChatPayloadSchema.parse(body);
 
-      const agent = mastra.getAgent('codebase-agent');
-      const stream = await agent.streamVNext(messages, {
-        format: 'aisdk',
-        onError: ({ error }) => {
-          console.error('Mastra streamVNext onError', error);
-        },
-      });
+          const agent = mastra.getAgent('codebase-agent');
+          const stream = await agent.streamVNext(messages, {
+            format: 'aisdk',
+            onError: ({ error }) => {
+              console.error('Mastra streamVNext onError', error);
+            },
+          });
 
-      return stream.toUIMessageStreamResponse();
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return json({ error: 'Invalid request body', details: error.issues }, { status: 400 });
-      }
+          return stream.toUIMessageStreamResponse();
+        } catch (error) {
+          if (error instanceof z.ZodError) {
+            return json({ error: 'Invalid request body', details: error.issues }, { status: 400 });
+          }
 
-      const message = error instanceof Error ? error.message : 'Unexpected error';
-      console.error('POST /api/chat error', error);
-      return json({ error: message }, { status: 500 });
-    }
+          const message = error instanceof Error ? error.message : 'Unexpected error';
+          console.error('POST /api/chat error', error);
+          return json({ error: message }, { status: 500 });
+        }
+      },
+    },
   },
 });
