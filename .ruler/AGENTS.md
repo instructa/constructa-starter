@@ -95,19 +95,19 @@
 
 ## Static server functions
 
-* `createServerFn({ type: 'static' })` runs at build time; cached as static JSON by key `(fnId + params hash)`; prerender embeds data in HTML; later client calls fetch JSON.
+* `createServerFn({ method: 'GET' }).middleware([staticFunctionMiddleware])` runs at build time; cached as static JSON by key `(fnId + params hash)`; prerender embeds data in HTML; later client calls fetch JSON.
 * Custom cache via `createServerFnStaticCache` and `setServerFnStaticCache`.
 
 ## Server functions
 
 * RPC-style, server-only; no stable public URL; access request ctx/env/cookies; return primitives/JSON/`Response`; can redirect/notFound/error.
 * Define: `createServerFn(opts?).handler(async ctx => { ... })`.
-* Options: `method: 'GET'|'POST'`, `response: 'data'|'full'|'raw'` (for streaming/custom headers).
+* Options: `method: 'GET'|'POST'`.
 * Callable from server/client/other server fns.
 * Single param: primitives/objects/`FormData`/`ReadableStream`/`Promise`.
-* Validation & types: `.validator(input => validated)` (works with Zod); identity validator for typing only.
-* Context (`@tanstack/react-start/server`): `getWebRequest`, `getHeaders`/`getHeader`, set cookies/headers/status, sessions, multipart, etc.
-* Returns: primitives/JSON by default; can set headers/status; with `response: 'raw'` return `Response`/SSE.
+* Validation & types: `.inputValidator(input => validated)` (works with Zod); identity validator for typing only.
+* Context (`@tanstack/react-start/server`): `getRequest`, `getRequestHeaders`/`getRequestHeader`, `setResponseHeaders`/`setResponseHeader`, `getCookies`, sessions, multipart, etc.
+* Returns: primitives/JSON by default; can set headers/status; return `Response` for custom responses/SSE.
 * Errors & control flow: throw → 500; `redirect(...)` from `@tanstack/react-router`; `notFound()`; supports `AbortSignal`.
 * Usage: in route lifecycles (`loader`/`beforeLoad`) redirects/notFounds auto-handled; in components use `useServerFn(fn)` and integrate with React Query; elsewhere handle redirects/notFounds manually.
 * No-JS support: use `<form action={serverFn.url} method="POST">` (pass args via inputs; `encType="multipart/form-data"` as needed); return value unavailable to client JS → use HTTP redirects to trigger loader refresh.
@@ -115,7 +115,7 @@
 
 ## Selective SSR
 
-* Default `ssr: true` (change via `createRouter({ defaultSsr: false })`). SPA mode disables all server loaders/SSR.
+* Default `ssr: true` (change via `getRouter({ defaultSsr: false })`). SPA mode disables all server loaders/SSR.
 * Per-route `ssr`: `true` | `'data-only'` | `false`.
 * Functional `ssr(props)`: runs only on server initial request; can return `true` | `'data-only'` | `false` based on validated params/search.
 * Inheritance: child can only get less SSR (true → `'data-only'` or false; `'data-only'` → false).

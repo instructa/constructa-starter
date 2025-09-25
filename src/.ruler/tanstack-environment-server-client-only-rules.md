@@ -12,7 +12,7 @@
 # TanStack Start basics
 
 * Depends: @tanstack/react-router, Vite
-* Router: createRouter({ routeTree, scrollRestoration: true })
+* Router: getRouter()
 * routeTree.gen.ts auto-generated on first dev run
 * Optional entries: server handler via @tanstack/react-start/server; client hydrate via StartClient
 * Root route head: utf-8, viewport, title; component wraps Outlet in RootDocument
@@ -21,7 +21,7 @@
 
 # Server functions (RPCs)
 
-* createServerFn({ method }) + zod .validator + .handler(ctx)
+* createServerFn({ method }) + zod .inputValidator + .handler(ctx)
 * After mutations: router.invalidate(); queryClient.invalidateQueries(\['entity', id])
 
 # Typed Links

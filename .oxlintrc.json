@@ -17,22 +17,31 @@
           {
             "name": "@tanstack/react-start/server",
             "importNames": ["createAPIFileRoute"],
-            "message": "Use createServerFileRoute + export ServerRoute instead."
+            "message": "Use createFileRoute + server handlers instead."
           },
           {
             "name": "@tanstack/react-start",
             "importNames": ["createAPIFileRoute"],
-            "message": "Use createServerFileRoute + export ServerRoute instead."
+            "message": "Use createFileRoute + server handlers instead."
+          },
+          {
+            "name": "@tanstack/react-start/server",
+            "importNames": ["createServerFileRoute"],
+            "message": "Use createFileRoute + server handlers instead."
           }
         ],
-        "patterns": ["*createAPIFileRoute*"]
+        "patterns": ["*createAPIFileRoute*", "*createServerFileRoute*"]
       }
     ],
     "no-restricted-syntax": [
       "error",
       {
         "selector": "ExportNamedDeclaration > ExportSpecifier[exported.name='APIRoute']",
-        "message": "Export the route as `ServerRoute`, not `APIRoute`."
+        "message": "Use createFileRoute with server handlers, not legacy API routes."
+      },
+      {
+        "selector": "ExportNamedDeclaration > ExportSpecifier[exported.name='ServerRoute']",
+        "message": "Use createFileRoute with server handlers, not legacy server routes."
       }
     ]
   },

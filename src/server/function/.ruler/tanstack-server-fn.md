@@ -24,7 +24,7 @@ Single param may be primitive, Array, Object, FormData, ReadableStream, or Promi
 
 # Validation & Types
 
-`.validator` enforces runtime input and drives types. Works with Zod. Transformed output becomes `ctx.data`. Identity validator supports typed I/O without checks.
+`.inputValidator` enforces runtime input and drives types. Works with Zod. Transformed output becomes `ctx.data`. Identity validator supports typed I/O without checks.
 
 # JSON & FormData
 
@@ -32,7 +32,7 @@ Supports JSON. With FormData use `encType="multipart/form-data"`.
 
 # Context (from @tanstack/react-start/server, h3)
 
-`getWebRequest`, `getHeaders|getHeader`, `setHeader`, `setResponseStatus`, cookies/sessions, multipart, custom server context.
+`getRequest`, `getRequestHeaders|getRequestHeader`, `setResponseHeader`, `setResponseStatus`, cookies/sessions, multipart, custom server context.
 
 # Returns
 

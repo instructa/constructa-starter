@@ -26,11 +26,11 @@ Pathless layout routes add group middleware; break-out routes skip parents.
 
 ## Server entry
 
-server.ts uses createStartHandler({createRouter})(defaultStreamHandler); custom wrappers may delegate to it.
+Server entry follows RC1 patterns (see src/start.ts for implementation). Uses createStart() with middleware registration.
 
 ## Define handlers
 
-methods per HTTP verb, directly or via builder with middleware.
+Use createFileRoute() and wrap server handlers inside `server: { handlers: { ... } }` structure. Methods per HTTP verb, directly or via builder with middleware.
 
 ## Handler context
 
@@ -51,3 +51,20 @@ Return JSON manually or via json(); set status via Response init or setResponseS
 ## Unique path rule
 
 Only one file per resolved path; users.ts vs users.index.ts vs users/index.ts conflicts.
+
+## API Route Structure (RC1)
+
+```typescript
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/api/example')({
+  server: {
+    handlers: {
+      GET: ({ request }) => new Response('Hello'),
+      POST: ({ request }) => new Response('Created', { status: 201 })
+    }
+  }
+})
+```
+
+Previously: `createServerFileRoute('/api/example').methods({ GET: ..., POST: ... })`
