@@ -1,9 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { cn } from '~/lib/utils';
 import { SidebarMenuButton, SidebarMenuItem } from '~/components/ui/sidebar';
-import RiGithubFill from '~icons/ri/github-fill';
-import RiListSettingsLine from '~icons/ri/list-settings-line';
-import RiUserSettingsLine from '~icons/ri/user-settings-line';
 import { settingsNavItems, type SettingsNavItem, type SettingsSection } from './settings-nav';
 
 interface SettingsNavigationProps {
@@ -11,11 +8,9 @@ interface SettingsNavigationProps {
 }
 
 export function SettingsNavigation({ activeSection }: SettingsNavigationProps) {
-  const workspaceItems = settingsNavItems.filter((item) => item.section !== 'github');
-  const connectionItems = settingsNavItems.filter((item) => item.section === 'github');
-
   const renderNavItem = (item: SettingsNavItem) => {
     const isActive = item.section === activeSection;
+    const Icon = item.icon;
 
     return (
       <SidebarMenuItem key={item.section}>
@@ -35,9 +30,7 @@ export function SettingsNavigation({ activeSection }: SettingsNavigationProps) {
             )}
           >
             <div className="flex items-center gap-2">
-              {item.icon === 'ri:user-settings-line' && <RiUserSettingsLine className="h-4 w-4" />}
-              {item.icon === 'ri:github-fill' && <RiGithubFill className="h-4 w-4" />}
-              {item.icon === 'ri:list-settings-line' && <RiListSettingsLine className="h-4 w-4" />}
+              <Icon className="h-4 w-4" />
               <span className="font-medium leading-none">{item.label}</span>
             </div>
           </Link>
@@ -46,13 +39,22 @@ export function SettingsNavigation({ activeSection }: SettingsNavigationProps) {
     );
   };
 
+  const workspaceItems = settingsNavItems.filter((item) => item.section === 'account' || item.section === 'preferences');
+  const billingItems = settingsNavItems.filter((item) => item.section === 'plans' || item.section === 'billing');
+
   return (
     <div className="flex flex-col gap-6 px-2 py-4">
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-2">
+        <p className="px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Workspace
         </p>
         <div className="space-y-1">{workspaceItems.map(renderNavItem)}</div>
+      </div>
+      <div className="space-y-2">
+        <p className="px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Billing
+        </p>
+        <div className="space-y-1">{billingItems.map(renderNavItem)}</div>
       </div>
     </div>
   );

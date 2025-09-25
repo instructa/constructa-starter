@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/com
 import { buttonVariants } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
 import { cn } from '~/lib/utils';
-import { ScopedAssistantStyles } from './assistant-styles';
+import { ScopedAssistantStyles } from '~/components/chat-assistant-styles';
 import { listDocuments } from '~/server/function/documents.server';
 
 type ChatLoaderData = {
