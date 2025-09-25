@@ -1,14 +1,11 @@
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
-import {
-  defineConfig,
-  loadEnv,
-  type ConfigEnv,
-} from 'vite';
+import { defineConfig, loadEnv, type ConfigEnv } from 'vite';
 import tsConfigPaths from 'vite-tsconfig-paths';
 import browserEcho from '@browser-echo/vite';
 import Icons from 'unplugin-icons/vite';
 import viteReact from '@vitejs/plugin-react';
+import nitro from 'nitro/vite';
 
 export default ({ mode }: ConfigEnv) => {
   // Regression in TanStack Start RC1: loadEnv now keeps the VITE_ prefix, so we
@@ -28,6 +25,7 @@ export default ({ mode }: ConfigEnv) => {
         projects: ['./tsconfig.json'],
       }),
       tanstackStart(),
+      nitro(),
       viteReact(),
       Icons({
         compiler: 'jsx',
