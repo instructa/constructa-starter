@@ -16,6 +16,7 @@
 
 - 🔐 **Authentication** - Login/signup with email, GitHub & Google OAuth, password reset
 - 📊 **Dashboard Templates** - AI Chat, Workflows, Documents, Image Chat, Charts (`/dashboard`)
+- 💳 **Billing & Payments** - Complete subscription system with Polar.sh integration, credit management, and billing portal (`/dashboard/billing`)
 - 🎨 **Marketing Pages** - Modern landing page with responsive design & dark/light mode
 - 💾 **Database** - Local PostgreSQL with Docker, Supabase ready, Drizzle ORM
 - 🤖 **AI-Optimized** - Cursor rules, .ruler auto-generated agent rules, AGENTS.md format for Claude Code/Codex/Cursor, consistent patterns, TypeScript for better AI coding
@@ -70,6 +71,7 @@ On top of that, we can layer in helpful tooling such as AI rules (Cursor Rules, 
 - **[TanStack Router](https://tanstack.com/router)** - Type-safe file-based routing
 - **[Better Auth](https://better-auth.com/)** - Modern authentication library
 - **[Better Auth UI](https://github.com/daveyplate/better-auth-ui)** - Pre-built React components for Better Auth
+- **[Polar.sh](https://polar.sh)** - Modern billing and subscription management
 - **[Drizzle ORM](https://orm.drizzle.team/)** - TypeScript ORM for PostgreSQL
 - **[Oxlint](https://oxc.rs/docs/guide/usage/linter.html)** - Fast JavaScript/TypeScript linter
 - **[Vitest](https://vitest.dev/)** - Lightning fast unit testing framework
@@ -105,6 +107,24 @@ DATABASE_URL="postgresql://username:password@localhost:5432/constructa"
 
 # Client-side Base URL (optional - defaults to current origin in production)
 VITE_BASE_URL="http://localhost:3000"
+
+# Billing / Polar Configuration
+POLAR_SERVER="sandbox"
+POLAR_ACCESS_TOKEN=""
+POLAR_WEBHOOK_SECRET=""
+POLAR_ORGANIZATION_ID=""
+POLAR_PRODUCT_PRO_MONTHLY="prod_..."
+POLAR_PRODUCT_BUSINESS_MONTHLY="prod_..."
+POLAR_PRODUCT_CREDITS_50="prod_..."
+POLAR_PRODUCT_CREDITS_100="prod_..."
+PUBLIC_URL="http://localhost:3000"
+CHECKOUT_SUCCESS_URL="http://localhost:3000/dashboard/billing/success"
+CHECKOUT_CANCEL_URL="http://localhost:3000/dashboard/billing"
+VITE_ENTERPRISE_DEMO_URL="https://calendly.com/your-team/demo"
+VITE_POLAR_PRODUCT_CREDITS_50="prod_..."
+VITE_POLAR_PRODUCT_CREDITS_100="prod_..."
+VITE_POLAR_PRODUCT_PRO_MONTHLY="prod_..."
+VITE_POLAR_PRODUCT_BUSINESS_MONTHLY="prod_..."
 
 # Better Auth
 BETTER_AUTH_SECRET="your-secret-key-here"
