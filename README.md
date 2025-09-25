@@ -16,6 +16,7 @@
 
 - 🔐 **Authentication** - Login/signup with email, GitHub & Google OAuth, password reset
 - 📊 **Dashboard Templates** - AI Chat, Workflows, Documents, Image Chat, Charts (`/dashboard`)
+- 🤖 **AI Assistant Chat** - Repository-aware AI assistant powered by Mastra with MinIO-backed file access (`/dashboard/chat`)
 - 🎨 **Marketing Pages** - Modern landing page with responsive design & dark/light mode
 - 💾 **Database** - Local PostgreSQL with Docker, Supabase ready, Drizzle ORM
 - 🤖 **AI-Optimized** - Cursor rules, .ruler auto-generated agent rules, AGENTS.md format for Claude Code/Codex/Cursor, consistent patterns, TypeScript for better AI coding
@@ -70,6 +71,9 @@ On top of that, we can layer in helpful tooling such as AI rules (Cursor Rules, 
 - **[TanStack Router](https://tanstack.com/router)** - Type-safe file-based routing
 - **[Better Auth](https://better-auth.com/)** - Modern authentication library
 - **[Better Auth UI](https://github.com/daveyplate/better-auth-ui)** - Pre-built React components for Better Auth
+- **[Mastra](https://mastra.ai)** - AI agent framework with tool integration
+- **[Assistant UI](https://assistant-ui.com)** - React components for AI chat interfaces
+- **[OpenAI SDK](https://github.com/vercel/ai)** - AI SDK for LLM integration
 - **[Drizzle ORM](https://orm.drizzle.team/)** - TypeScript ORM for PostgreSQL
 - **[Oxlint](https://oxc.rs/docs/guide/usage/linter.html)** - Fast JavaScript/TypeScript linter
 - **[Vitest](https://vitest.dev/)** - Lightning fast unit testing framework
@@ -105,6 +109,9 @@ DATABASE_URL="postgresql://username:password@localhost:5432/constructa"
 
 # Client-side Base URL (optional - defaults to current origin in production)
 VITE_BASE_URL="http://localhost:3000"
+
+# AI Configuration
+OPENAI_API_KEY="sk-..."
 
 # Better Auth
 BETTER_AUTH_SECRET="your-secret-key-here"
