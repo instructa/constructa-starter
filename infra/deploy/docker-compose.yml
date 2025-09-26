@@ -1,20 +1,15 @@
 version: "3.9"
 
-x-app-image: &app_image "${APP_IMAGE:-ghcr.io/your-org/your-repo/app}:${APP_TAG:-latest}"
-
 services:
   db:
     image: pgvector/pgvector:0.8.0-pg17
-    container_name: ex0-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
       POSTGRES_DB: ${POSTGRES_DB:?}
     volumes:
-      - ex0-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"  # expose for host-side tooling (drizzle migrations, etc.)
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -23,21 +18,19 @@ services:
 
   minio:
     image: quay.io/minio/minio:latest
-    container_name: ex0-minio
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
     command: server /data --console-address ":9001"
     volumes:
-      - ex0-minio-data:/data
+      - minio:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
       timeout: 3s
       retries: 20
 
-  # one-time bucket/policy provisioning; idempotent; safe to re-run
   provision-minio:
     image: minio/mc:latest
     depends_on:
@@ -51,70 +44,45 @@ services:
       "
     restart: "no"
 
-  # Redis for BullMQ jobs/queues
   redis:
     image: redis:7-alpine
-    container_name: ex0-redis
     restart: unless-stopped
     command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
     volumes:
-      - ex0-redis-data:/data
+      - redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
 
-  # Meilisearch for fast lexical/symbol search
   meilisearch:
     image: getmeili/meilisearch:latest
-    container_name: ex0-meili
     restart: unless-stopped
     environment:
       MEILI_ENV: production
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?changeme}
     volumes:
-      - ex0-meili-data:/meili_data
+      - meili:/meili_data
     healthcheck:
       test: ["CMD", "curl", "-sSf", "http://localhost:7700/health"]
       interval: 5s
       timeout: 3s
       retries: 40
 
-  # migrations run before app starts, re-created for each new image tag
   migrate:
-    image: *app_image
+    image: ${APP_IMAGE:?}:${APP_TAG:?}
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: ${DATABASE_URL:?} # e.g. postgres://user:pass@db:5432/ex0
       NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?}
     entrypoint: ["sh", "-c", "pnpm run db:migrate"]
     restart: "no"
 
-  # only for local dev, not exposed publicly
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: ex0-mailhog
-    restart: unless-stopped
-    environment:
-      MH_STORAGE: memory
-    profiles: ["dev"]  # won't run in prod
-
-  # Optional: Cloudflare Tunnel to expose local dev to the internet for real webhooks
-  # Requires CLOUDFLARED_TUNNEL_TOKEN in .env
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: ex0-cloudflared
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
-    profiles: ["tunnel"]
-    restart: unless-stopped
-
-  # Background workers for BullMQ (cron + indexing, etc.)
   worker:
-    image: *app_image
-    container_name: ex0-worker
+    image: ${APP_IMAGE:?}:${APP_TAG:?}
     depends_on:
       db:
         condition: service_healthy
@@ -149,11 +117,9 @@ services:
       - "host.docker.internal:host-gateway"
     command: ["node", "--import", "tsx/loader", "src/worker/index.ts"]
     restart: unless-stopped
-    profiles: ["dev","selfhost","prod"]
 
-  # App container (useful for self-host/preview via reverse proxy; in dev run pnpm dev)
   app:
-    image: *app_image
+    image: ${APP_IMAGE:?}:${APP_TAG:?}
     depends_on:
       db:
         condition: service_healthy
@@ -176,16 +142,34 @@ services:
       S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?}
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?}
       S3_BUCKET: ${MINIO_BUCKET:?}
-      # Email (dev uses mailhog: host=mailhog, port=1025)
-      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-mailhog}
+      # Email provider
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
       # Redis + Meili for app features
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       MEILI_HOST: ${MEILI_HOST:-http://meilisearch:7700}
       MEILI_API_KEY: ${MEILI_API_KEY:-${MEILI_MASTER_KEY}}
-    profiles: ["selfhost","prod"]
+
+  caddy:
+    image: caddy:2
+    depends_on:
+      app:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_HOSTNAME: ${APP_HOSTNAME:?app.example.com}
+      ACME_EMAIL: ${ACME_EMAIL:?admin@example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
 
 volumes:
-  ex0-data:
-  ex0-minio-data:
-  ex0-redis-data:
-  ex0-meili-data:
+  pgdata:
+  minio:
+  redis:
+  meili:
+  caddy_data:
+  caddy_config:

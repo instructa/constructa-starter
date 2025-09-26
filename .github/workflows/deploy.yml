@@ -8,52 +8,89 @@ on:
         type: choice
         options: [dev, prod]
         required: true
-        default: dev
+        default: prod
       tag:
         description: "Image tag to deploy (default: current commit SHA)"
         required: false
         default: ""
-      force:
-        description: "Force rebuild without cache"
+      prune:
+        description: "Prune old images after deploy"
         type: boolean
         required: false
-        default: false
+        default: true
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
-      - name: Resolve tag
-        id: tag
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag and image
+        id: meta
         run: |
           TAG="${{ inputs.tag }}"
           if [ -z "$TAG" ]; then TAG="${GITHUB_SHA}"; fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY}/app" >> "$GITHUB_OUTPUT"
 
-      - name: Call Coolify Deploy API
+      - name: Copy compose bundle to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "infra/deploy/*"
+          target: ${{ secrets.APP_DIR }}
+
+      - name: Remote deploy
+        uses: appleboy/ssh-action@v1.0.3
         env:
-          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-          COOLIFY_SERVICE_UUID: ${{ secrets.COOLIFY_SERVICE_UUID }}
-          TAG: ${{ steps.tag.outputs.tag }}
-          FORCE: ${{ inputs.force }}
-        run: |
-          if [ -z "$COOLIFY_URL" ] || [ -z "$COOLIFY_TOKEN" ] || [ -z "$COOLIFY_SERVICE_UUID" ]; then
-            echo "Missing COOLIFY_* secrets on the selected environment."
-            exit 1
-          fi
-          FORCE_PARAM=""
-          if [ "$FORCE" = "true" ]; then FORCE_PARAM="&force=true"; fi
+          IMAGE: ${{ steps.meta.outputs.image }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          APP_DIR: ${{ secrets.APP_DIR }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          PRUNE: ${{ inputs.prune }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: IMAGE,TAG,APP_DIR,GHCR_USERNAME,GHCR_TOKEN,PRUNE
+          script: |
+            set -euo pipefail
+            mkdir -p "$APP_DIR"
+            cd "$APP_DIR"
 
-          echo "Triggering deploy of UUID=$COOLIFY_SERVICE_UUID to tag=$TAG at $COOLIFY_URL"
-          curl -fsSL \
-            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
-            "$COOLIFY_URL/deploy?uuid=${COOLIFY_SERVICE_UUID}&tag=${TAG}${FORCE_PARAM}" \
-            -o response.json
+            # Ensure .env exists; if not, scaffold from sample
+            if [ ! -f ".env" ] && [ -f ".env.sample" ]; then
+              cp .env.sample .env
+            fi
 
-          echo "Response:"
-          cat response.json
+            # Write/replace APP_IMAGE + APP_TAG in .env
+            if grep -q '^APP_IMAGE=' .env; then
+              sed -i "s#^APP_IMAGE=.*#APP_IMAGE=${IMAGE}#" .env
+            else
+              echo "APP_IMAGE=${IMAGE}" >> .env
+            fi
+            if grep -q '^APP_TAG=' .env; then
+              sed -i "s#^APP_TAG=.*#APP_TAG=${TAG}#" .env
+            else
+              echo "APP_TAG=${TAG}" >> .env
+            fi
+
+            # auth to GHCR to pull private images
+            echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
+
+            # Pull + run
+            docker compose pull app worker migrate
+            docker compose up -d
+
+            # Optional: prune old images
+            if [ "$PRUNE" = "true" ]; then
+              docker image prune -f || true
+            fi

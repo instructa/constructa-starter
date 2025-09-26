@@ -1,41 +1,55 @@
-# Hosting: Hetzner + Coolify
+# Hosting on Hetzner (Docker Compose + Caddy)
 
-## Provision the server
+## 1) Provision the server
 
 Use the Terraform module:
 
 ```bash
 cd infra/hetzner
-export TF_VAR_hcloud_token=your_hcloud_token
-terraform init
-terraform apply
+export TF_VAR_hcloud_token=YOUR_TOKEN
+terraform init && terraform apply
 ```
 
-* The server is Debian 12 by default and **auto-installs Coolify** using the official quick installer via cloud-init.
-* Access the dashboard at `http://YOUR_SERVER_IP:8000` and create the admin account immediately.
+* Debian 12
+* Docker Engine + Compose plugin installed
+* Non-root `deploy` user with your SSH key
+* `/opt/constructa` prepared for deployment
 
-## Add your server to Coolify
+## 2) DNS
 
-From the Coolify UI, add the new server and validate. The built-in Traefik proxy will be set up automatically.
+Point `app.example.com` to the server IP.
 
-## Create resources
+## 3) First-time server env
 
-* **PostgreSQL**, **Redis**, **MinIO**, **Meilisearch** can be created as Coolify managed services if you prefer; or use your Hetzner DB services.
-* Create an **Application → Docker Image** for:
+SSH in and prepare `.env`:
 
-  * `app` (web) using `ghcr.io/<owner>/<repo>/app`
-  * `worker` (background jobs) using the same image but command: `node --import tsx/loader src/worker/index.ts`
+```bash
+ssh deploy@your.server.ip
+cd /opt/constructa
+cp .env.sample .env
+# edit values (DATABASE_URL, secrets, etc.)
+```
 
-Set environment variables in Coolify matching your `.env`. Use **Environment-level** shared variables for dev/prod separation.
+> The `.env.sample` you commit is copied by the deploy workflow. Keep real secrets only on the server in `.env`.
 
-## Domains & TLS
+## 4) Deploy
 
-* Point your domain (e.g. `app.example.com`) to the server.
-* Coolify/Traefik can auto-issue Let’s Encrypt certs.
-* For stricter setups, consider Cloudflare Origin Certs + Authenticated Origin Pull (mTLS).
+From GitHub → Actions → **deploy**:
 
-## Firewall (optional hardening)
+* Choose **prod** (or **dev** if you have a second environment configured)
+* (Optional) enter a specific image tag
 
-# You can restrict 80/443 to Cloudflare IPs using `scripts/cloudflare/hcloud-allow-cloudflare.sh` (requires `hcloud` CLI & `jq`), or manage in Hetzner Firewall directly.
+The workflow copies `infra/deploy/` to `/opt/constructa`, updates `APP_TAG` in `.env`, logs into GHCR, pulls images, and runs:
 
 ```
+docker compose up -d
+```
+
+## 5) HTTPS
+
+Caddy (in the compose stack) auto-issues Let’s Encrypt certificates using `ACME_EMAIL`. It reverse-proxies `https://app.example.com` → `app:3000`.
+
+### Hardening tips
+
+* Use the Hetzner Firewall (already applied) to limit SSH to your IP.
+* If you front with Cloudflare later, restrict ports 80/443 to Cloudflare IPs, and consider Origin Certificates + Authenticated Origin Pull.

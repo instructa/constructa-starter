@@ -5,9 +5,9 @@ variable "hcloud_token" {
 }
 
 variable "server_name" {
-  description = "Name for the Coolify server"
+  description = "Name for the app server"
   type        = string
-  default     = "coolify-constructa"
+  default     = "constructa-app"
 }
 
 variable "server_type" {
@@ -38,4 +38,10 @@ variable "enable_http3" {
   description = "Allow UDP/443 for HTTP/3"
   type        = bool
   default     = true
+}
+
+variable "deploy_username" {
+  description = "Non-root user for SSH deploy"
+  type        = string
+  default     = "deploy"
 }

@@ -1,4 +1,4 @@
-# Hetzner + Coolify Terraform
+# Hetzner Terraform (Docker + Compose)
 
 ## Prereqs
 - Terraform `>= 1.6`
@@ -9,13 +9,14 @@
 ```bash
 cd infra/hetzner
 export TF_VAR_hcloud_token=your-token
+# optional: set your SSH key path
+# export TF_VAR_ssh_public_key_path=~/.ssh/id_ed25519.pub
 terraform init
 terraform apply
 ````
 
-When finished, Coolify is installed automatically via cloud-init (port **8000**). Create your admin user on first visit. See the official install docs for details.
-(Ref: Coolify Quick Installation)
+This provisions a Debian 12 server, installs **Docker Engine + Compose plugin** via cloud-init, creates a non-root `${deploy_username}` user (default: `deploy`), and prepares `/opt/constructa`.
 
-### Hardening
+# Afterward, configure your DNS (e.g., `app.example.com` → server IP) and deploy using the GitHub Action (see docs/constructa/cicd.md).
 
-* Consider using the included `scripts/cloudflare/hcloud-allow-cloudflare.sh` later to restrict 80/443 to Cloudflare IP ranges only (mTLS origin certs recommended).
+```
