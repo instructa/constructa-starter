@@ -6,7 +6,7 @@ import browserEcho from '@browser-echo/vite';
 import Icons from 'unplugin-icons/vite';
 import viteReact from '@vitejs/plugin-react';
 // uncomment this to use vercel deployment
-import { nitro } from 'nitro/vite';
+//import { nitro } from 'nitro/vite';
 
 export default ({ mode }: ConfigEnv) => {
   // Regression in TanStack Start RC1: loadEnv now keeps the VITE_ prefix, so we
@@ -16,6 +16,7 @@ export default ({ mode }: ConfigEnv) => {
   return defineConfig({
     server: {
       port: 3000,
+      allowedHosts: ['.ngrok-free.app', 'ngrok-free.app'],
     },
     ssr: {
       // Ensure Node-y Mastra stays external to avoid bundling issues
@@ -26,7 +27,7 @@ export default ({ mode }: ConfigEnv) => {
         projects: ['./tsconfig.json'],
       }),
       tanstackStart(),
-      nitro(),
+      //nitro(),
       viteReact(),
       Icons({
         compiler: 'jsx',

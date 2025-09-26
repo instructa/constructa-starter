@@ -7,10 +7,20 @@ type PlanCardProps = {
   price: string;
   features: string[];
   current?: boolean;
+  statusLabel?: string;
+  statusDescription?: string;
   cta: React.ReactNode;
 };
 
-export function PlanCard({ name, price, features, current, cta }: PlanCardProps) {
+export function PlanCard({
+  name,
+  price,
+  features,
+  current,
+  cta,
+  statusLabel,
+  statusDescription,
+}: PlanCardProps) {
   return (
     <div
       className={cn(
@@ -23,7 +33,7 @@ export function PlanCard({ name, price, features, current, cta }: PlanCardProps)
           <div className="text-lg font-semibold">{name}</div>
           <div className="mt-1 text-2xl font-bold">{price}</div>
         </div>
-        {current ? <Badge variant="secondary">Current plan</Badge> : null}
+        {current ? <Badge variant="secondary">{statusLabel ?? 'Current plan'}</Badge> : null}
       </div>
       <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
         {features.map((feature) => (
@@ -31,12 +41,11 @@ export function PlanCard({ name, price, features, current, cta }: PlanCardProps)
         ))}
       </ul>
       <div className="mt-4 flex-1" />
-      <div className="mt-4">
-        {current ? (
-          <div className="text-center text-sm text-muted-foreground">Current plan</div>
-        ) : (
-          cta
-        )}
+      <div className="mt-4 flex flex-col items-stretch gap-2">
+        {cta}
+        {current && statusDescription ? (
+          <div className="text-center text-xs text-muted-foreground">{statusDescription}</div>
+        ) : null}
       </div>
     </div>
   );

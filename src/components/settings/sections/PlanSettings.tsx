@@ -6,6 +6,75 @@ import { Button } from '~/components/ui/button';
 import { PLANS } from '~/config/plans';
 import { useBillingInfo, useOpenPortal, useStartCheckout } from '~/hooks/useBilling';
 
+type SubscriptionStatusCopy = {
+  label: string;
+  description?: string;
+};
+
+function formatSubscriptionStatus(
+  status: string,
+  cancelAtPeriodEnd: boolean,
+  currentPeriodEnd: string | null,
+): SubscriptionStatusCopy {
+  const formatDate = (input: string | null) => {
+    if (!input) return null;
+    const date = new Date(input);
+    if (Number.isNaN(date.getTime())) return null;
+    return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(date);
+  };
+
+  const formattedDate = formatDate(currentPeriodEnd);
+
+  if (status === 'active') {
+    if (cancelAtPeriodEnd) {
+      return {
+        label: 'Canceling',
+        description: formattedDate
+          ? `Scheduled to end on ${formattedDate}`
+          : 'Subscription will end at the close of the current period.',
+      };
+    }
+
+    return {
+      label: 'Current plan',
+      description: formattedDate ? `Renews on ${formattedDate}` : 'Renews automatically each period.',
+    };
+  }
+
+  if (status === 'trialing') {
+    return {
+      label: 'Trialing',
+      description: formattedDate ? `Trial ends on ${formattedDate}` : undefined,
+    };
+  }
+
+  if (status === 'canceled') {
+    return {
+      label: 'Canceled',
+      description: formattedDate ? `Ended on ${formattedDate}` : 'Subscription is inactive.',
+    };
+  }
+
+  if (status === 'past_due') {
+    return {
+      label: 'Past due',
+      description: 'Payment is overdue. Update your billing details to restore access.',
+    };
+  }
+
+  if (status === 'unpaid') {
+    return {
+      label: 'Unpaid',
+      description: 'Payment failed. Please settle the balance to keep your plan active.',
+    };
+  }
+
+  return {
+    label: 'Current plan',
+    description: formattedDate ?? undefined,
+  };
+}
+
 export function PlanSettingsSection() {
   const { data, isPending, error } = useBillingInfo();
   const startCheckout = useStartCheckout();
@@ -24,6 +93,7 @@ export function PlanSettingsSection() {
   }
 
   const currentPlan = data.planId;
+  const statusCopy = formatSubscriptionStatus(data.status, data.cancelAtPeriodEnd, data.currentPeriodEnd);
 
   const handleCheckout = (productId: string | null | undefined) => {
     if (!productId) {
@@ -56,6 +126,8 @@ export function PlanSettingsSection() {
           price="$25 / month"
           features={['100 monthly credits', 'Private projects', 'Roles & permissions']}
           current={currentPlan === 'pro'}
+          statusLabel={currentPlan === 'pro' ? statusCopy.label : undefined}
+          statusDescription={currentPlan === 'pro' ? statusCopy.description : undefined}
           cta={
             currentPlan === 'pro' ? (
               <Button variant="outline" className="w-full" onClick={openPortal}>
@@ -74,6 +146,8 @@ export function PlanSettingsSection() {
           price="$50 / month"
           features={['150 monthly credits', 'SSO & audit logs', 'Priority support']}
           current={currentPlan === 'business'}
+          statusLabel={currentPlan === 'business' ? statusCopy.label : undefined}
+          statusDescription={currentPlan === 'business' ? statusCopy.description : undefined}
           cta={
             currentPlan === 'business' ? (
               <Button variant="outline" className="w-full" onClick={openPortal}>
@@ -92,6 +166,8 @@ export function PlanSettingsSection() {
           price="Custom"
           features={['Dedicated support', 'Onboarding & SLAs', 'Custom integrations']}
           current={currentPlan === 'enterprise'}
+          statusLabel={currentPlan === 'enterprise' ? statusCopy.label : undefined}
+          statusDescription={currentPlan === 'enterprise' ? statusCopy.description : undefined}
           cta={<EnterpriseCTA />}
         />
       </section>
