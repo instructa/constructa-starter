@@ -5,7 +5,8 @@ import tsConfigPaths from 'vite-tsconfig-paths';
 import browserEcho from '@browser-echo/vite';
 import Icons from 'unplugin-icons/vite';
 import viteReact from '@vitejs/plugin-react';
-import nitro from 'nitro/vite';
+// uncomment this to use vercel deployment
+import { nitro } from 'nitro/vite';
 
 export default ({ mode }: ConfigEnv) => {
   // Regression in TanStack Start RC1: loadEnv now keeps the VITE_ prefix, so we
