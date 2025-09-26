@@ -1,0 +1,59 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment (dev or prod)"
+        type: choice
+        options: [dev, prod]
+        required: true
+        default: dev
+      tag:
+        description: "Image tag to deploy (default: current commit SHA)"
+        required: false
+        default: ""
+      force:
+        description: "Force rebuild without cache"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          TAG="${{ inputs.tag }}"
+          if [ -z "$TAG" ]; then TAG="${GITHUB_SHA}"; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Call Coolify Deploy API
+        env:
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_SERVICE_UUID: ${{ secrets.COOLIFY_SERVICE_UUID }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          if [ -z "$COOLIFY_URL" ] || [ -z "$COOLIFY_TOKEN" ] || [ -z "$COOLIFY_SERVICE_UUID" ]; then
+            echo "Missing COOLIFY_* secrets on the selected environment."
+            exit 1
+          fi
+          FORCE_PARAM=""
+          if [ "$FORCE" = "true" ]; then FORCE_PARAM="&force=true"; fi
+
+          echo "Triggering deploy of UUID=$COOLIFY_SERVICE_UUID to tag=$TAG at $COOLIFY_URL"
+          curl -fsSL \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            "$COOLIFY_URL/deploy?uuid=${COOLIFY_SERVICE_UUID}&tag=${TAG}${FORCE_PARAM}" \
+            -o response.json
+
+          echo "Response:"
+          cat response.json

@@ -1,0 +1,6 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+runcmd:
+  - "curl -fsSL https://cdn.coollabs.io/coolify/install.sh | sudo bash"
+  # After install, Coolify UI will be available on http://IP:8000 . Create the admin user immediately.

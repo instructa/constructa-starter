@@ -56,7 +56,7 @@ const initCommand = defineCommand({
     runCommand('pnpm install', 'Install dependencies');
     checkDocker();
     console.log(yellow('ℹ️ Starting Docker containers. This might take a while...'));
-    runCommand('docker compose up -d', 'Start Docker containers');
+    runCommand('COMPOSE_PROFILES=dev docker compose up -d db minio provision-minio redis meilisearch mailhog', 'Start core dev services (db, minio, redis, meilisearch, mailhog)');
     runCommand('npx drizzle-kit generate', 'Generate Drizzle kit');
     runCommand('npx drizzle-kit migrate', 'Run Drizzle migrations');
 
@@ -109,7 +109,7 @@ const reloadCommand = defineCommand({
     console.log(cyan('🔄 Reloading Docker containers...'));
     runCommand('docker compose down', 'Stop and remove existing Docker containers');
     console.log(yellow('ℹ️ Starting Docker containers. This might take a while...'));
-    runCommand('docker compose up -d', 'Start Docker containers with updated configuration');
+    runCommand('COMPOSE_PROFILES=dev docker compose up -d db minio provision-minio redis meilisearch mailhog', 'Start core dev services (db, minio, redis, meilisearch, mailhog)');
     console.log(cyan('✅ Docker containers reloaded successfully'));
   },
 });

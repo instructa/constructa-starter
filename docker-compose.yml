@@ -1,41 +1,216 @@
+version: "3.9"
+
+x-app-image: &app_image ${APP_IMAGE:?}
+x-app-tag: &app_tag ${APP_TAG:-latest}
+
 services:
   db:
     image: pgvector/pgvector:0.8.0-pg17
     container_name: ex0-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: ex0
-    ports:
-      - '5432:5432'
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
     volumes:
       - ex0-data:/var/lib/postgresql/data
-
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: ex0-mailhog
-    restart: unless-stopped
-    ports:
-      - '1025:1025' # SMTP server
-      - '8025:8025' # Web UI
-    environment:
-      MH_STORAGE: memory
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   minio:
     image: quay.io/minio/minio:latest
     container_name: ex0-minio
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
     command: server /data --console-address ":9001"
-    ports:
-      - '9000:9000' # S3 API (use this in your app)
-      - '9001:9001' # Web UI
     volumes:
       - ex0-minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # one-time bucket/policy provisioning; idempotent; safe to re-run
+  provision-minio:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/${MINIO_BUCKET} &&
+      mc anonymous set none local/${MINIO_BUCKET} || true
+      "
+    restart: "no"
+
+  # Redis for BullMQ jobs/queues
+  redis:
+    image: redis:7-alpine
+    container_name: ex0-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - ex0-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Meilisearch for fast lexical/symbol search
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: ex0-meili
+    restart: unless-stopped
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?changeme}
+    volumes:
+      - ex0-meili-data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-sSf", "http://localhost:7700/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+
+  # migrations run before app starts, re-created for each new image tag
+  migrate:
+    image: *app_image:*app_tag
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?} # e.g. postgres://user:pass@db:5432/ex0
+      NODE_ENV: production
+    entrypoint: ["sh", "-c", "pnpm run db:migrate"]
+    restart: "no"
+
+  # only for staging/dev, not exposed publicly
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: ex0-mailhog
+    restart: unless-stopped
+    environment:
+      MH_STORAGE: memory
+    profiles: ["dev"]  # won't run in prod
+
+  # Optional: Cloudflare Tunnel to expose local dev to the internet for real webhooks
+  # Requires CLOUDFLARED_TUNNEL_TOKEN in .env
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: ex0-cloudflared
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
+    depends_on:
+      app:
+        condition: service_started
+    profiles: ["tunnel"]
+    restart: unless-stopped
+
+  # Background workers for BullMQ (cron + indexing, etc.)
+  worker:
+    image: *app_image:*app_tag
+    container_name: ex0-worker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      provision-minio:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?}
+      # S3-compatible config to reach MinIO inside the stack
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?}
+      S3_BUCKET: ${MINIO_BUCKET:?}
+      # Job queue + schedules
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      BULLMQ_PREFIX: ${BULLMQ_PREFIX:-constructa}
+      DAILY_CREDIT_REFILL_CRON: ${DAILY_CREDIT_REFILL_CRON:-0 3 * * *}
+      JOB_DAILY_CREDIT_REFILL_URL: ${JOB_DAILY_CREDIT_REFILL_URL:-http://app:3000/api/jobs/daily-credit-refill}
+      JOBS_SECRET: ${JOBS_SECRET:-}
+      # Search
+      MEILI_HOST: ${MEILI_HOST:-http://meilisearch:7700}
+      MEILI_API_KEY: ${MEILI_API_KEY:-${MEILI_MASTER_KEY}}
+      SEARCH_REINDEX_ON_BOOT: ${SEARCH_REINDEX_ON_BOOT:-false}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["node", "--import", "tsx/loader", "src/worker/index.ts"]
+    restart: unless-stopped
+    profiles: ["dev","selfhost","prod"]
+
+  # App container (for self-host or preview). In Coolify you will deploy "app" separately.
+  app:
+    image: *app_image:*app_tag
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      provision-minio:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?}
+      # S3-compatible config to reach MinIO inside the stack
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?}
+      S3_BUCKET: ${MINIO_BUCKET:?}
+      # Email (dev uses mailhog: host=mailhog, port=1025)
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-mailhog}
+      # Redis + Meili for app features
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      MEILI_HOST: ${MEILI_HOST:-http://meilisearch:7700}
+      MEILI_API_KEY: ${MEILI_API_KEY:-${MEILI_MASTER_KEY}}
+    # Traefik labels for Coolify proxy (HTTPS). Ignored in pure local use.
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ex0.rule=Host(`${APP_HOSTNAME:?app.example.com}`)
+      - traefik.http.routers.ex0.entryPoints=websecure
+      - traefik.http.routers.ex0.tls=true
+      - traefik.http.services.ex0.loadbalancer.server.port=3000
+
+      # Security headers
+      - traefik.http.middlewares.ex0-sec.headers.stsSeconds=31536000
+      - traefik.http.middlewares.ex0-sec.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.ex0-sec.headers.stsPreload=true
+      - traefik.http.middlewares.ex0-sec.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.ex0-sec.headers.frameDeny=true
+      - traefik.http.middlewares.ex0-sec.headers.referrerPolicy=no-referrer
+      - traefik.http.routers.ex0.middlewares=ex0-sec,ex0-rl
+
+      # Basic rate-limit at Traefik (per IP via CF-Connecting-IP)
+      - traefik.http.middlewares.ex0-rl.ratelimit.average=120
+      - traefik.http.middlewares.ex0-rl.ratelimit.burst=240
+      - traefik.http.middlewares.ex0-rl.ratelimit.period=1s
+      - traefik.http.middlewares.ex0-rl.ratelimit.sourcecriterion.requestheadername=CF-Connecting-IP
+    # Keep "app" available for self-host or preview; for local dev you likely run `pnpm dev` instead.
+    profiles: ["selfhost","prod"]
 
 volumes:
   ex0-data:
   ex0-minio-data:
+  ex0-redis-data:
+  ex0-meili-data:
