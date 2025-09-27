@@ -1,0 +1,5 @@
+WAIT=5
+TIMEOUT=30
+ATTEMPTS=10
+
+/health

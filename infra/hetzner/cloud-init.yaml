@@ -13,8 +13,11 @@ packages:
   - ca-certificates
   - curl
   - gnupg
+  - git
+  - ufw
 
 runcmd:
+  # Install Docker (required by Dokku)
   - install -m 0755 -d /etc/apt/keyrings
   - bash -c 'curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg'
   - chmod a+r /etc/apt/keyrings/docker.gpg
@@ -23,4 +26,17 @@ runcmd:
   - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - usermod -aG docker ${deploy_username}
   - systemctl enable --now docker
-  - mkdir -p /opt/constructa
+
+  # Install Dokku (latest stable version)
+  - wget -NP /tmp https://dokku.com/install/v0.36.0/bootstrap.sh
+  - bash /tmp/bootstrap.sh
+
+  # Configure firewall for Dokku
+  - ufw allow OpenSSH
+  - ufw allow http
+  - ufw allow https
+  - ufw --force enable
+
+  # Basic Dokku configuration
+  - dokku domains:add-global ex0.dev
+  - dokku config:set --global DOKKU_LETSENCRYPT_EMAIL=admin@ex0.dev

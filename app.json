@@ -1,0 +1,28 @@
+{
+  "name": "constructa",
+  "description": "Constructa starter app",
+  "keywords": ["tanstack", "react", "typescript"],
+  "website": "https://ex0.dev",
+  "repository": "https://github.com/your-org/constructa-starter",
+  "scripts": {
+    "dokku": {
+      "predeploy": "pnpm run db:migrate"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "free"
+    },
+    "worker": {
+      "quantity": 1,
+      "size": "free"
+    }
+  },
+  "addons": ["dokku-postgres", "dokku-redis"],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ]
+}
