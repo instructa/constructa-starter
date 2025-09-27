@@ -15,6 +15,11 @@ packages:
   - gnupg
   - git
   - ufw
+  - apt-transport-https
+  - wget
+  - software-properties-common
+  - dirmngr
+  - lsb-release
 
 runcmd:
   # Install Docker (required by Dokku)
@@ -27,9 +32,16 @@ runcmd:
   - usermod -aG docker ${deploy_username}
   - systemctl enable --now docker
 
+  # Wait for Docker to be ready
+  - sleep 10
+  - docker version
+
   # Install Dokku (latest stable version)
-  - wget -NP /tmp https://dokku.com/install/v0.36.0/bootstrap.sh
-  - bash /tmp/bootstrap.sh
+  - |
+    cd /tmp
+    wget https://dokku.com/install/v0.36.7/bootstrap.sh
+    chmod +x bootstrap.sh
+    DOKKU_TAG=v0.36.7 ./bootstrap.sh
 
   # Configure firewall for Dokku
   - ufw allow OpenSSH

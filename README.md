@@ -97,7 +97,7 @@ This project includes a custom CLI tool for common tasks. Run it using `pnpm ex0
 | `recreate` | Recreate Docker containers and volume (WARNING: deletes all data!)         |                      |
 | `recreate` | Recreate Docker containers (use <code>--wipeVolume</code> to also delete the data volume) | `--wipeVolume` |
 | `testdata` | Create or delete seed test data in the database                            | `--create`, `--delete` |
-| `deploy`   | [TODO] Deploy the application                                              |                      |
+| `deploy`   | Deploy via `git push dokku main` (see docs/constructa/hosting.md)         | Run as needed        |
 
 ## 🔧 Configuration
 

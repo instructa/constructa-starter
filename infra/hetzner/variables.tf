@@ -7,7 +7,7 @@ variable "hcloud_token" {
 variable "server_name" {
   description = "Name for the app server"
   type        = string
-  default     = "constructa-dokku"
+  default     = "ex0-dev-server"
 }
 
 variable "server_type" {

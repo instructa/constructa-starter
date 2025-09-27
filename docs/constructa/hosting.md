@@ -1,4 +1,4 @@
-# Hosting on Hetzner (Docker Compose + Caddy)
+# Hosting on Hetzner (Dokku)
 
 ## 1) Provision the server
 
@@ -10,44 +10,49 @@ export TF_VAR_hcloud_token=YOUR_TOKEN
 terraform init && terraform apply
 ```
 
-* Debian 12
-* Docker Engine + Compose plugin installed
+* Debian 13
+* Docker Engine installed
+* Dokku v0.36.7 installed
 * Non-root `deploy` user with your SSH key
-* `/opt/constructa` prepared for deployment
+* Firewall configured (SSH, HTTP, HTTPS)
 
 ## 2) DNS
 
-Point `app.example.com` to the server IP.
+Point `ex0.dev` to the server IP (via Cloudflare with proxy enabled).
 
-## 3) First-time server env
+## 3) First deployment
 
-SSH in and prepare `.env`:
+Add your SSH key and create the app:
 
 ```bash
-ssh deploy@your.server.ip
-cd /opt/constructa
-cp .env.sample .env
-# edit values (DATABASE_URL, secrets, etc.)
+# Add your SSH key for deployments
+cat ~/.ssh/<your-public-key>.pub | ssh root@your.server.ip "dokku ssh-keys:add admin"
+
+# Create the app
+ssh root@your.server.ip "dokku apps:create constructa"
+
+# Add git remote
+git remote add dokku dokku@your.server.ip:constructa
+
+# Deploy!
+git push dokku main
 ```
 
-> The `.env.sample` you commit is copied by the deploy workflow. Keep real secrets only on the server in `.env`.
+## 4) Environment variables
 
-## 4) Deploy
+Set production environment variables:
 
-From GitHub → Actions → **deploy**:
-
-* Choose **prod** (or **dev** if you have a second environment configured)
-* (Optional) enter a specific image tag
-
-The workflow copies `infra/deploy/` to `/opt/constructa`, updates `APP_TAG` in `.env`, logs into GHCR, pulls images, and runs:
-
-```
-docker compose up -d
+```bash
+ssh root@your.server.ip "dokku config:set constructa DATABASE_URL=postgres://... NODE_ENV=production"
 ```
 
 ## 5) HTTPS
 
-Caddy (in the compose stack) auto-issues Let’s Encrypt certificates using `ACME_EMAIL`. It reverse-proxies `https://app.example.com` → `app:3000`.
+Dokku automatically handles SSL certificates via Let's Encrypt:
+
+```bash
+ssh root@your.server.ip "dokku letsencrypt:enable constructa"
+```
 
 ### Hardening tips
 

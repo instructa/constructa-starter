@@ -1,4 +1,4 @@
-# Hetzner Terraform (Docker + Compose)
+# Hetzner Terraform (Dokku)
 
 ## Prereqs
 - Terraform `>= 1.6`
@@ -13,10 +13,21 @@ export TF_VAR_hcloud_token=your-token
 # export TF_VAR_ssh_public_key_path=~/.ssh/id_ed25519.pub
 terraform init
 terraform apply
-````
+```
 
-This provisions a Debian 12 server, installs **Docker Engine + Compose plugin** via cloud-init, creates a non-root `${deploy_username}` user (default: `deploy`), and prepares `/opt/constructa`.
+This provisions a Debian 13 server with:
+- **Docker Engine** (required by Dokku)
+- **Dokku v0.36.7** (PaaS layer)
+- Non-root `${deploy_username}` user (default: `deploy`)
+- Configured firewall (SSH, HTTP, HTTPS)
 
-# Afterward, configure your DNS (e.g., `app.example.com` → server IP) and deploy using the GitHub Action (see docs/constructa/cicd.md).
+## After provisioning
+
+1. Add your SSH key: `cat ~/.ssh/id_ed25519.pub | ssh root@SERVER_IP "dokku ssh-keys:add admin"`
+2. Create app: `ssh root@SERVER_IP "dokku apps:create constructa"`
+3. Add git remote: `git remote add dokku dokku@SERVER_IP:constructa`
+4. Deploy: `git push dokku main`
+
+See docs/constructa/hosting.md for detailed deployment instructions.
 
 ```

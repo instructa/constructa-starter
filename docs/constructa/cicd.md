@@ -1,32 +1,56 @@
-# CI/CD: GitHub → GHCR → SSH → Docker Compose
+# CI/CD with Dokku
 
-## Build
+## Simple Git-based Deployment
 
-On push to `main`, `.github/workflows/build.yml` builds
+With Dokku, deployment is as simple as:
 
+```bash
+git push dokku main
 ```
-ghcr.io/<owner>/<repo>/app:<sha>
+
+No GitHub Actions needed! Dokku handles:
+- Building your Docker image
+- Running migrations (via app.json)
+- Zero-downtime deployment
+- Automatic SSL certificates
+- Health checks
+
+## Deployment Flow
+
+1. **Push code**:
+   ```bash
+   git push dokku main
+   ```
+
+2. **Dokku automatically**:
+   - Detects Dockerfile
+   - Builds the image
+   - Runs pre-deploy scripts from `app.json`
+   - Performs health checks
+   - Swaps containers with zero downtime
+
+## Environment Variables
+
+Set them on the server:
+
+```bash
+ssh root@your.server.ip "dokku config:set constructa KEY=value"
 ```
 
-and `:latest`.
+## Useful Commands
 
-## Deploy
+```bash
+# View logs
+ssh root@your.server.ip "dokku logs constructa"
 
-Run the **deploy** workflow manually and choose the environment:
+# Scale workers
+ssh root@your.server.ip "dokku ps:scale constructa worker=1"
 
-* The job copies `infra/deploy/*` to `/opt/constructa` on the server.
-* It sets `APP_TAG=<sha>` in `/opt/constructa/.env`.
-* It logs into GHCR and runs `docker compose pull` + `docker compose up -d`.
+# Run one-off commands
+ssh root@your.server.ip "dokku run constructa pnpm db:migrate"
 
-### Required environment secrets (in GitHub → Settings → Environments → prod)
-
-* `SSH_HOST` — server IP or hostname
-* `SSH_USER` — e.g. `deploy`
-* `SSH_KEY` — private key (PEM)
-* `APP_DIR` — usually `/opt/constructa`
-* `GHCR_USERNAME` — your GitHub username or org
-* `GHCR_TOKEN` — a token with `read:packages`
-
-# Create a **dev** environment the same way if you maintain a separate staging server.
+# Rollback
+ssh root@your.server.ip "dokku ps:rebuild constructa"
+```
 
 ```
