@@ -47,7 +47,7 @@ jobs:
           source: "infra/deploy/*"
           target: ${{ secrets.APP_DIR }}
 
-      - name: Remote deploy
+      - name: Remote deploy (compose + dokku)
         uses: appleboy/ssh-action@v1.0.3
         env:
           IMAGE: ${{ steps.meta.outputs.image }}
@@ -56,13 +56,17 @@ jobs:
           GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           PRUNE: ${{ inputs.prune }}
+          DOKKU_APP: ${{ secrets.DOKKU_APP }}
+          APP_HOSTNAME: ${{ secrets.APP_HOSTNAME }}
+          DOKKU_HOST: ${{ secrets.DOKKU_HOST }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: IMAGE,TAG,APP_DIR,GHCR_USERNAME,GHCR_TOKEN,PRUNE
+          envs: IMAGE,TAG,APP_DIR,GHCR_USERNAME,GHCR_TOKEN,PRUNE,DOKKU_APP,APP_HOSTNAME,DOKKU_HOST
           script: |
             set -euo pipefail
+
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
@@ -83,12 +87,85 @@ jobs:
               echo "APP_TAG=${TAG}" >> .env
             fi
 
-            # auth to GHCR to pull private images
+            # Auth to GHCR to pull private images
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
 
-            # Pull + run
-            docker compose pull app worker migrate
-            docker compose up -d
+            # Boot core services (loopback only), provision bucket, run migrations, start worker
+            if [ -f "compose.yml" ]; then
+              docker compose -f compose.yml pull db minio redis meilisearch worker migrate || true
+              docker compose -f compose.yml up -d db minio redis meilisearch
+              docker compose -f compose.yml up provision-minio || true
+              docker compose -f compose.yml run --rm migrate
+              docker compose -f compose.yml up -d worker
+            else
+              echo "compose.yml not found in ${APP_DIR}"; exit 1
+            fi
+
+            # Bootstrap Dokku app
+            APP="${DOKKU_APP}"
+            if ! dokku apps:exists "$APP" >/dev/null 2>&1; then
+              dokku apps:create "$APP"
+            fi
+            if [ -n "${APP_HOSTNAME:-}" ]; then
+              dokku domains:set "$APP" "$APP_HOSTNAME" || true
+            fi
+            dokku proxy:ports-set "$APP" http:80:3000 || true
+            # allow containers to reach compose services via host.docker.internal
+            dokku docker-options:add "$APP" deploy,run "--add-host=host.docker.internal:host-gateway" || true
+
+            # Load .env and push important vars to Dokku
+            set +u
+            set -a
+            . ./.env
+            set +a
+            set -u
+
+            dokku config:set --no-restart "$APP" \
+              NODE_ENV=production PORT=3000 \
+              # DB
+              DATABASE_URL="$DATABASE_URL" \
+              # S3 / MinIO (point at compose on loopback via host.docker.internal)
+              S3_ENDPOINT="http://host.docker.internal:9000" \
+              S3_REGION="${S3_REGION:-us-east-1}" \
+              S3_ACCESS_KEY_ID="${S3_ACCESS_KEY_ID:-$MINIO_ROOT_USER}" \
+              S3_SECRET_ACCESS_KEY="${S3_SECRET_ACCESS_KEY:-$MINIO_ROOT_PASSWORD}" \
+              S3_BUCKET="${S3_BUCKET:-$MINIO_BUCKET}" \
+              S3_ENABLE_PATH_STYLE="${S3_ENABLE_PATH_STYLE:-1}" \
+              S3_PREVIEW_URL_EXPIRE_IN="${S3_PREVIEW_URL_EXPIRE_IN:-7200}" \
+              # Search + queue (loopback targets)
+              MEILI_HOST="http://host.docker.internal:7700" \
+              MEILI_API_KEY="${MEILI_API_KEY:-$MEILI_MASTER_KEY}" \
+              REDIS_URL="redis://host.docker.internal:6379" \
+              BULLMQ_PREFIX="${BULLMQ_PREFIX:-constructa}" \
+              DAILY_CREDIT_REFILL_CRON="${DAILY_CREDIT_REFILL_CRON:-0 3 * * *}" \
+              JOB_DAILY_CREDIT_REFILL_URL="${JOB_DAILY_CREDIT_REFILL_URL:-http://app:3000/api/jobs/daily-credit-refill}" \
+              JOBS_SECRET="${JOBS_SECRET:-}" \
+              # Auth/Email/3rd-parties
+              BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET:-}" \
+              BETTER_AUTH_URL="https://${APP_HOSTNAME:-$DOKKU_HOST}" \
+              EMAIL_PROVIDER="${EMAIL_PROVIDER:-smtp}" \
+              EMAIL_FROM="${EMAIL_FROM:-noreply@example.org}" \
+              RESEND_API_KEY="${RESEND_API_KEY:-}" \
+              OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
+              POLAR_SERVER="${POLAR_SERVER:-production}" \
+              POLAR_ACCESS_TOKEN="${POLAR_ACCESS_TOKEN:-}" \
+              POLAR_WEBHOOK_SECRET="${POLAR_WEBHOOK_SECRET:-}" \
+              POLAR_ORGANIZATION_ID="${POLAR_ORGANIZATION_ID:-}" \
+              POLAR_PRODUCT_PRO_MONTHLY="${POLAR_PRODUCT_PRO_MONTHLY:-}" \
+              POLAR_PRODUCT_BUSINESS_MONTHLY="${POLAR_PRODUCT_BUSINESS_MONTHLY:-}" \
+              POLAR_PRODUCT_CREDITS_50="${POLAR_PRODUCT_CREDITS_50:-}" \
+              POLAR_PRODUCT_CREDITS_100="${POLAR_PRODUCT_CREDITS_100:-}" \
+              PUBLIC_URL="https://${APP_HOSTNAME:-$DOKKU_HOST}" \
+              CHECKOUT_SUCCESS_URL="https://${APP_HOSTNAME:-$DOKKU_HOST}/dashboard/billing/success" \
+              CHECKOUT_CANCEL_URL="https://${APP_HOSTNAME:-$DOKKU_HOST}/dashboard/billing"
+
+            # Deploy from GHCR image to Dokku
+            dokku git:from-image "$APP" "${IMAGE}:${TAG}"
+
+            # TLS (best-effort)
+            if command -v dokku >/dev/null 2>&1; then
+              dokku letsencrypt:enable "$APP" || dokku letsencrypt:force-renew "$APP" || true
+            fi
 
             # Optional: prune old images
             if [ "$PRUNE" = "true" ]; then

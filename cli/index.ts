@@ -270,12 +270,65 @@ const testdataCommand = defineCommand({
 const deployCommand = defineCommand({
   meta: {
     name: 'deploy',
-    description: '[TODO] Deploy the application',
+    description: 'Deploy to Dokku (dev or prod) via git push',
   },
-  async run() {
-    console.log(yellow('⚠️ Deploy command not implemented yet'));
+  args: {
+    env: {
+      type: 'string',
+      description: 'Target environment: dev or prod',
+      default: 'prod',
+    },
+    ref: {
+      type: 'string',
+      description: 'Git ref to push (e.g., main, HEAD)',
+      default: 'HEAD',
+    },
   },
+  async run({ args }) {
+    const targetRemote = args.env === 'dev' ? 'dokku-dev' : 'dokku-prod';
+    // Fallback to generic "dokku" remote if specific remote not found
+    let remote: string | null = null;
+    try {
+      const remotes = execSync('git remote', { stdio: 'pipe' })
+        .toString()
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      remote = remotes.includes(targetRemote)
+        ? targetRemote
+        : remotes.includes('dokku')
+          ? 'dokku'
+          : null;
+    } catch {
+      // ignore
+    }
+
+```
+if (!remote) {
+  console.error(
+    red(`❌ No Dokku remote found.
+```
+
+Add one of the following and retry:
+
+git remote add dokku-prod [dokku@your.server.ip](mailto:dokku@your.server.ip):constructa
+
+# optional dev
+
+git remote add dokku-dev  [dokku@your.dev.server.ip](mailto:dokku@your.dev.server.ip):constructa`)
+);
+process.exit(1);
+}
+
+```
+const pushRef = `${args.ref}:main`;
+runCommand(`git push ${remote} ${pushRef}`, `Deploy ${args.ref} to ${args.env} (${remote})`);
+```
+
+},
 });
+
+```
 
 const main = defineCommand({
   meta: {
