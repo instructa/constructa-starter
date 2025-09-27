@@ -1,5 +1,4 @@
 import dotenv from 'dotenv';
-import 'dotenv/config';
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -303,32 +302,26 @@ const deployCommand = defineCommand({
       // ignore
     }
 
-```
-if (!remote) {
-  console.error(
-    red(`❌ No Dokku remote found.
-```
+    if (!remote) {
+      const guidance = [
+        '❌ No Dokku remote found.',
+        '',
+        'Add one of the following and retry:',
+        '',
+        'git remote add dokku-prod dokku@your.server.ip:constructa',
+        '',
+        '# optional dev',
+        '',
+        'git remote add dokku-dev dokku@your.dev.server.ip:constructa',
+      ].join('\n');
+      console.error(red(guidance));
+      process.exit(1);
+    }
 
-Add one of the following and retry:
-
-git remote add dokku-prod [dokku@your.server.ip](mailto:dokku@your.server.ip):constructa
-
-# optional dev
-
-git remote add dokku-dev  [dokku@your.dev.server.ip](mailto:dokku@your.dev.server.ip):constructa`)
-);
-process.exit(1);
-}
-
-```
-const pushRef = `${args.ref}:main`;
-runCommand(`git push ${remote} ${pushRef}`, `Deploy ${args.ref} to ${args.env} (${remote})`);
-```
-
-},
+    const pushRef = `${args.ref}:main`;
+    runCommand(`git push ${remote} ${pushRef}`, `Deploy ${args.ref} to ${args.env} (${remote})`);
+  },
 });
-
-```
 
 const main = defineCommand({
   meta: {
