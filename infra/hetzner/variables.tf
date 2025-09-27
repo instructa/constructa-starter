@@ -13,13 +13,13 @@ variable "server_name" {
 variable "server_type" {
   description = "Hetzner server type"
   type        = string
-  default     = "cpx21"
+  default     = "cx22"
 }
 
 variable "location" {
   description = "Hetzner location (nbg1, hel1, fsn1)"
   type        = string
-  default     = "nbg1"
+  default     = "fsn1"
 }
 
 variable "ssh_public_key_path" {

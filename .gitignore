@@ -6,6 +6,7 @@
 .env
 .env.development
 .env.local
+.env.prod
 .env.sentry-build-plugin
 .hidden
 .mastra
@@ -33,6 +34,10 @@ yarn.lock
 dev_docs
 src/routeTree.gen.ts
 logs
+infra/hetzner/.terraform/
+infra/hetzner/terraform.tfstate
+infra/hetzner/terraform.tfstate.*
+*.tfplan
 
 # START Ruler Generated Files
 /.codex/config.toml

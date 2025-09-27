@@ -1,5 +1,5 @@
 locals {
-  ssh_pub_key = trim(file(var.ssh_public_key_path))
+  ssh_pub_key = trimspace(file(var.ssh_public_key_path))
 }
 
 resource "hcloud_ssh_key" "me" {
@@ -46,7 +46,7 @@ resource "hcloud_firewall" "app" {
 resource "hcloud_server" "app" {
   name         = var.server_name
   server_type  = var.server_type
-  image        = "debian-12"
+  image        = "debian-13"
   location     = var.location
   ssh_keys     = [hcloud_ssh_key.me.id]
   firewall_ids = [hcloud_firewall.app.id]
