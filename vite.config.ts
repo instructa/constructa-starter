@@ -16,6 +16,7 @@ export default ({ mode }: ConfigEnv) => {
   return defineConfig({
     server: {
       port: 3000,
+      allowedHosts: ['db15f87f452b.ngrok-free.app'],
     },
     ssr: {
       // Ensure Node-y Mastra stays external to avoid bundling issues

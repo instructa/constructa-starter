@@ -1,29 +1,82 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { reactStartCookies } from 'better-auth/react-start';
+import { magicLink } from 'better-auth/plugins';
+import { Polar } from '@polar-sh/sdk';
+import { polar, checkout, portal, webhooks } from '@polar-sh/better-auth';
+
 import { db } from '~/db/db-config';
 import { sendEmail } from './email';
-import { magicLink } from 'better-auth/plugins';
+import { polarEnv } from '~/conf/polar';
+import { polarWebhookHandlers } from '~/server/polar-webhooks';
 
 const isProd = process.env.NODE_ENV === 'production';
+const sessionCookieName = process.env.SESSION_COOKIE_NAME ?? 'ex0_session';
 
 const isEmailVerificationEnabled = process.env.ENABLE_EMAIL_VERIFICATION === 'true';
+
+const polarClient = new Polar({
+  accessToken: polarEnv.POLAR_ACCESS_TOKEN,
+  server: polarEnv.POLAR_SERVER,
+});
+
+const checkoutProducts = [
+  polarEnv.POLAR_PRODUCT_PRO_MONTHLY
+    ? { productId: polarEnv.POLAR_PRODUCT_PRO_MONTHLY, slug: 'pro' as const }
+    : null,
+  polarEnv.POLAR_PRODUCT_BUSINESS_MONTHLY
+    ? { productId: polarEnv.POLAR_PRODUCT_BUSINESS_MONTHLY, slug: 'business' as const }
+    : null,
+  polarEnv.POLAR_PRODUCT_CREDITS_50
+    ? { productId: polarEnv.POLAR_PRODUCT_CREDITS_50, slug: 'credits-50' as const }
+    : null,
+  polarEnv.POLAR_PRODUCT_CREDITS_100
+    ? { productId: polarEnv.POLAR_PRODUCT_CREDITS_100, slug: 'credits-100' as const }
+    : null,
+].filter(Boolean) as Array<{ productId: string; slug: string }>;
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
   }),
-  plugins: [
-    reactStartCookies({
-      // 1️⃣  Secure session cookie options
-      cookieName: process.env.SESSION_COOKIE_NAME ?? 'ex0_session',
-      cookieOptions: {
-        httpOnly: true,
-        secure: isProd,
-        sameSite: 'lax',
-        path: '/',
+  advanced: {
+    useSecureCookies: isProd,
+    defaultCookieAttributes: {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isProd,
+      path: '/',
+    },
+    cookies: {
+      session_token: {
+        name: sessionCookieName,
       },
-    }),
+      session_data: {
+        attributes: {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: isProd,
+          path: '/',
+        },
+      },
+    },
+  },
+  user: {
+    deleteUser: {
+      enabled: true,
+      afterDelete: async (deletedUser) => {
+        try {
+          await polarClient.customers.deleteExternal({ externalId: deletedUser.id });
+        } catch (error: any) {
+          if (error?.error !== 'ResourceNotFound') {
+            console.error('[polar] failed to delete external customer', error);
+          }
+        }
+      },
+    },
+  },
+  plugins: [
+    reactStartCookies(),
     magicLink({
       async sendMagicLink({ email, url }) {
         await sendEmail({
@@ -41,6 +94,22 @@ export const auth = betterAuth({
           `,
         });
       },
+    }),
+    polar({
+      client: polarClient,
+      createCustomerOnSignUp: true,
+      use: [
+        checkout({
+          products: checkoutProducts,
+          successUrl: polarEnv.CHECKOUT_SUCCESS_URL,
+          authenticatedUsersOnly: true,
+        }),
+        portal(),
+        webhooks({
+          secret: polarEnv.POLAR_WEBHOOK_SECRET,
+          ...polarWebhookHandlers,
+        }),
+      ],
     }),
   ],
   emailAndPassword: {
@@ -114,7 +183,7 @@ export const auth = betterAuth({
   rateLimit: {
     enabled: true,
     window: 60, // seconds
-    max: 10, // allow 10 requests per window (tests expect 429 on the 11th)
+    max: 300, // relax to tolerate webhook bursts while keeping baseline protection
   },
 });
 

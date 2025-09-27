@@ -50,6 +50,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@iconify-json/ri": "^1.2.5",
     "@mastra/core": "0.17.1",
+    "@polar-sh/better-auth": "^1.1.4",
     "@polar-sh/sdk": "^0.35.2",
     "@polar-sh/tanstack-start": "^0.1.8",
     "@radix-ui/react-avatar": "^1.1.10",

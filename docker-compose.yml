@@ -1,6 +1,6 @@
-version: "3.9"
+version: '3.9'
 
-x-app-image: &app_image "${APP_IMAGE:-ghcr.io/your-org/your-repo/app}:${APP_TAG:-latest}"
+x-app-image: &app_image '${APP_IMAGE:-ghcr.io/your-org/your-repo/app}:${APP_TAG:-latest}'
 
 services:
   db:
@@ -14,9 +14,9 @@ services:
     volumes:
       - ex0-data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"  # expose for host-side tooling (drizzle migrations, etc.)
+      - '5432:5432' # expose for host-side tooling (drizzle migrations, etc.)
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -32,7 +32,7 @@ services:
     volumes:
       - ex0-minio-data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -49,18 +49,18 @@ services:
       mc mb --ignore-existing local/${MINIO_BUCKET} &&
       mc anonymous set none local/${MINIO_BUCKET} || true
       "
-    restart: "no"
+    restart: 'no'
 
   # Redis for BullMQ jobs/queues
   redis:
     image: redis:7-alpine
     container_name: ex0-redis
     restart: unless-stopped
-    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    command: ['redis-server', '--save', '60', '1', '--loglevel', 'warning']
     volumes:
       - ex0-redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -76,7 +76,7 @@ services:
     volumes:
       - ex0-meili-data:/meili_data
     healthcheck:
-      test: ["CMD", "curl", "-sSf", "http://localhost:7700/health"]
+      test: ['CMD', 'curl', '-sSf', 'http://localhost:7700/health']
       interval: 5s
       timeout: 3s
       retries: 40
@@ -90,8 +90,8 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?} # e.g. postgres://user:pass@db:5432/ex0
       NODE_ENV: production
-    entrypoint: ["sh", "-c", "pnpm run db:migrate"]
-    restart: "no"
+    entrypoint: ['sh', '-c', 'pnpm run db:migrate']
+    restart: 'no'
 
   # only for local dev, not exposed publicly
   mailhog:
@@ -100,7 +100,10 @@ services:
     restart: unless-stopped
     environment:
       MH_STORAGE: memory
-    profiles: ["dev"]  # won't run in prod
+    ports:
+      - '1025:1025' # SMTP port
+      - '8025:8025' # Web UI port
+    profiles: ['dev'] # won't run in prod
 
   # Optional: Cloudflare Tunnel to expose local dev to the internet for real webhooks
   # Requires CLOUDFLARED_TUNNEL_TOKEN in .env
@@ -108,7 +111,7 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: ex0-cloudflared
     command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
-    profiles: ["tunnel"]
+    profiles: ['tunnel']
     restart: unless-stopped
 
   # Background workers for BullMQ (cron + indexing, etc.)
@@ -146,10 +149,10 @@ services:
       MEILI_API_KEY: ${MEILI_API_KEY:-${MEILI_MASTER_KEY}}
       SEARCH_REINDEX_ON_BOOT: ${SEARCH_REINDEX_ON_BOOT:-false}
     extra_hosts:
-      - "host.docker.internal:host-gateway"
-    command: ["node", "--import", "tsx/loader", "src/worker/index.ts"]
+      - 'host.docker.internal:host-gateway'
+    command: ['node', '--import', 'tsx/loader', 'src/worker/index.ts']
     restart: unless-stopped
-    profiles: ["dev","selfhost","prod"]
+    profiles: ['dev', 'selfhost', 'prod']
 
   # App container (useful for self-host/preview via reverse proxy; in dev run pnpm dev)
   app:
@@ -182,7 +185,7 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       MEILI_HOST: ${MEILI_HOST:-http://meilisearch:7700}
       MEILI_API_KEY: ${MEILI_API_KEY:-${MEILI_MASTER_KEY}}
-    profiles: ["selfhost","prod"]
+    profiles: ['selfhost', 'prod']
 
 volumes:
   ex0-data:

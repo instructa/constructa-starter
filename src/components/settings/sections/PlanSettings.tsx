@@ -3,7 +3,6 @@ import { CreditMeter } from '~/components/billing/CreditMeter';
 import { EnterpriseCTA } from '~/components/billing/EnterpriseCTA';
 import { PlanCard } from '~/components/billing/PlanCard';
 import { Button } from '~/components/ui/button';
-import { PLANS } from '~/config/plans';
 import { useBillingInfo, useOpenPortal, useStartCheckout } from '~/hooks/useBilling';
 
 export function PlanSettingsSection() {
@@ -30,7 +29,9 @@ export function PlanSettingsSection() {
       window.alert('Plan not configured. Set POLAR product IDs in your environment.');
       return;
     }
-    startCheckout([productId]);
+    void startCheckout([productId]).catch(() => {
+      window.alert('Unable to start checkout. Please try again.');
+    });
   };
 
   const handleBuyCredits = (amount: number) => {
@@ -39,7 +40,9 @@ export function PlanSettingsSection() {
       window.alert('Credit pack not configured. Add the POLAR_PRODUCT_CREDITS_* env vars.');
       return;
     }
-    startCheckout([productId], { kind: 'credit_pack', credits: amount });
+    void startCheckout([productId], { kind: 'credit_pack', credits: amount }).catch(() => {
+      window.alert('Unable to start checkout. Please try again.');
+    });
   };
 
   return (

@@ -4,6 +4,7 @@ import { InvoiceList, type InvoiceItem } from '~/components/billing/InvoiceList'
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
+import { useOpenPortal } from '~/hooks/useBilling';
 
 const BillingSchema = z.object({
   billingEmail: z.string().email(),
@@ -30,6 +31,7 @@ export function BillingSettingsSection({ variant = 'dialog' }: BillingSettingsSe
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const openPortal = useOpenPortal();
 
   React.useEffect(() => {
     let cancelled = false;
@@ -195,9 +197,17 @@ export function BillingSettingsSection({ variant = 'dialog' }: BillingSettingsSe
           <Button type="submit" disabled={saving}>
             {saving ? 'Saving…' : 'Save billing details'}
           </Button>
-          <a className="text-sm font-medium text-primary underline" href="/api/portal">
+          <button
+            type="button"
+            className="text-sm font-medium text-primary underline"
+            onClick={() => {
+              void openPortal().catch(() => {
+                window.alert('Unable to open customer portal. Please try again.');
+              });
+            }}
+          >
             Open customer portal
-          </a>
+          </button>
         </div>
       </form>
 

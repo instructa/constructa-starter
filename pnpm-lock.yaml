@@ -71,6 +71,9 @@ importers:
       '@mastra/core':
         specifier: 0.17.1
         version: 0.17.1(openapi-types@12.1.3)(react@19.1.1)(zod@4.1.11)
+      '@polar-sh/better-auth':
+        specifier: ^1.1.4
+        version: 1.1.4(@polar-sh/sdk@0.35.2)(better-auth@1.3.14(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(solid-js@1.9.9))
       '@polar-sh/sdk':
         specifier: ^0.35.2
         version: 0.35.2
@@ -2730,6 +2733,13 @@ packages:
 
   '@polar-sh/adapter-utils@0.2.6':
     resolution: {integrity: sha512-vQ21YCm/pTSl/K8dt6zSXK0c4Um6xcI+eJWaeJHRxziL5OMgELtA3Da1bTnw8urUOka91PDr35vO2xezr+vmXQ==}
+
+  '@polar-sh/better-auth@1.1.4':
+    resolution: {integrity: sha512-8SfzZdeqig4NltgIQZe9ezIY05hCRTKwrvup4TvYKUfr5dGSD+dN53OgmyPrx10tNNPXW9xiDrDYDvmRrhs1eg==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      '@polar-sh/sdk': ^0.34.16
+      better-auth: ^1.3.9
 
   '@polar-sh/sdk@0.34.17':
     resolution: {integrity: sha512-+eJAAyyP4CAtMy9Hd6gaNXErjaH3KuTXJFv72kqlCCvv7SweBlM4U2+zpeYAZvd/YMRZq/c447f0a0DD2e7UEA==}
@@ -12187,6 +12197,12 @@ snapshots:
       '@polar-sh/sdk': 0.34.17
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
+
+  '@polar-sh/better-auth@1.1.4(@polar-sh/sdk@0.35.2)(better-auth@1.3.14(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(solid-js@1.9.9))':
+    dependencies:
+      '@polar-sh/sdk': 0.35.2
+      better-auth: 1.3.14(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(solid-js@1.9.9)
+      zod: 3.25.76
 
   '@polar-sh/sdk@0.34.17':
     dependencies:

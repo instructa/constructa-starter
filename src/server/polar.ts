@@ -9,12 +9,48 @@ export const polar = new Polar({
 type CustomerIdentity = { id: string; email: string; name?: string | null };
 
 export async function upsertPolarCustomerByExternalId(user: CustomerIdentity) {
-  return polar.customers.updateExternal({
+  const name = user.name ?? user.email.split('@')[0];
+
+  const isUuid = /^[0-9a-fA-F-]{36}$/.test(user.id);
+
+  try {
+    if (isUuid) {
+      return await polar.customers.update({
+        id: user.id,
+        customerUpdate: {
+          email: user.email,
+          name,
+          externalId: user.id,
+        },
+      });
+    }
+  } catch (error: any) {
+    if (error?.error !== 'RequestValidationError' && error?.error !== 'ResourceNotFound') {
+      console.error('[polar] unexpected error updating customer by id', error);
+      throw error;
+    }
+  }
+
+  try {
+    return await polar.customers.updateExternal({
+      externalId: user.id,
+      customerUpdateExternalID: {
+        email: user.email,
+        name,
+      },
+    });
+  } catch (error: any) {
+    if (error?.error !== 'ResourceNotFound') {
+      console.error('[polar] updateExternal failed', error);
+      throw error;
+    }
+  }
+
+  // Create customer if it doesn't exist yet
+  return polar.customers.create({
+    email: user.email,
+    name,
     externalId: user.id,
-    customerUpdateExternalID: {
-      email: user.email,
-      name: user.name ?? user.email.split('@')[0],
-    },
   });
 }
 
@@ -24,25 +60,47 @@ export async function createCustomerPortalUrlForUser(user: { id: string }) {
 }
 
 export async function listOrdersByExternalCustomerId(userId: string, limit = 50) {
-  const list = await polar.orders.list({
-    limit,
-    externalCustomerId: userId,
+  let customerId: string | null = null;
+
+  try {
+    const customer = await polar.customers.getExternal({ externalId: userId });
+    customerId = customer.id;
+  } catch (error: any) {
+    if (error?.error === 'ResourceNotFound') {
+      return [];
+    }
+    console.error('[polar] failed to resolve customer by external id', error);
+    throw error;
+  }
+
+  const iterator = await polar.orders.list({
+    customerId,
     organizationId: polarEnv.POLAR_ORGANIZATION_ID,
+    limit,
   });
 
-  return list.items;
+  const orders: Awaited<ReturnType<typeof polar.orders.get>>[] = [];
+
+  for await (const page of iterator) {
+    orders.push(...page.result.items);
+    if (orders.length >= limit) {
+      break;
+    }
+  }
+
+  return orders.slice(0, limit);
 }
 
 export async function ensureOrderInvoice(orderId: string) {
   try {
-    return await polar.orders.getInvoice({ id: orderId });
+    return await polar.orders.invoice({ id: orderId });
   } catch {
     await polar.orders.generateInvoice({ id: orderId });
 
     for (let i = 0; i < 5; i++) {
       await new Promise((resolve) => setTimeout(resolve, 600));
       try {
-        return await polar.orders.getInvoice({ id: orderId });
+        return await polar.orders.invoice({ id: orderId });
       } catch {
         // retry
       }
@@ -53,5 +111,5 @@ export async function ensureOrderInvoice(orderId: string) {
 }
 
 export async function getCustomerStateByExternalId(userId: string) {
-  return polar.customers.stateExternalGet({ externalId: userId });
+  return polar.customers.getStateExternal({ externalId: userId });
 }

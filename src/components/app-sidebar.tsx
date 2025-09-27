@@ -21,12 +21,7 @@ import FileListIcon from 'virtual:icons/ri/file-list-line';
 import FileCodeIcon from 'virtual:icons/ri/file-code-line';
 import HomeSmileIcon from 'virtual:icons/ri/home-smile-line';
 
-const data = {
-  user: {
-    name: 'ex0',
-    email: 'm@example.com',
-    avatar: '/avatars/shadcn.jpg',
-  },
+const navData = {
   navMain: [
     {
       title: 'Dashboard',
@@ -104,7 +99,19 @@ const data = {
   ],
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+type SidebarUser = {
+  name?: string | null;
+  email: string;
+  image?: string | null;
+};
+
+export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sidebar> & { user: SidebarUser }) {
+  const resolvedUser = {
+    name: user.name ?? user.email,
+    email: user.email,
+    avatar: user.image ?? '/avatars/shadcn.jpg',
+  };
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -120,10 +127,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navData.navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={resolvedUser} />
       </SidebarFooter>
     </Sidebar>
   );
