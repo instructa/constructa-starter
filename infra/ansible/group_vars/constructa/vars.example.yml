@@ -8,6 +8,8 @@ constructa_domain: app.example.com
 # Example: ['www.app.example.com']
 constructa_redirect_domains: []
 constructa_redirect_plugin_repo: 'https://github.com/dokku/dokku-redirect.git'
+constructa_letsencrypt_plugin_repo: 'https://github.com/dokku/dokku-letsencrypt.git'
+constructa_letsencrypt_email: ''
 constructa_deploy_dir: /opt/constructa
 
 constructa_enable_registry_login: false

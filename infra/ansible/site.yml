@@ -250,7 +250,6 @@
           - plugin:list
       register: constructa_dokku_plugins
       changed_when: false
-      when: constructa_redirect_enabled | default(false) | bool
 
     - name: Install Dokku redirect plugin when missing
       become: true
@@ -263,6 +262,19 @@
         - constructa_redirect_enabled | default(false) | bool
         - constructa_dokku_plugins.stdout is defined
         - not ('redirect' in (constructa_dokku_plugins.stdout | default('')))
+
+    - name: Install Dokku letsencrypt plugin when missing
+      become: true
+      command:
+        argv:
+          - dokku
+          - plugin:install
+          - "{{ constructa_letsencrypt_plugin_repo | default('https://github.com/dokku/dokku-letsencrypt.git') }}"
+      when:
+        - constructa_letsencrypt_plugin_repo is defined
+        - constructa_letsencrypt_plugin_repo | length > 0
+        - constructa_dokku_plugins.stdout is defined
+        - not ('letsencrypt' in (constructa_dokku_plugins.stdout | default('')))
 
     - name: Ensure secondary domains exist
       become: true
@@ -290,6 +302,43 @@
       loop_control:
         label: "{{ item }}"
       when: constructa_redirect_enabled | default(false) | bool
+
+    - name: Configure global LetsEncrypt email
+      become: true
+      command:
+        argv:
+          - dokku
+          - config:set
+          - --global
+          - "DOKKU_LETSENCRYPT_EMAIL={{ constructa_letsencrypt_email }}"
+      when:
+        - constructa_letsencrypt_email is defined
+        - constructa_letsencrypt_email | length > 0
+
+    - name: Enable LetsEncrypt for app
+      become: true
+      command:
+        argv:
+          - dokku
+          - letsencrypt:enable
+          - "{{ constructa_app_name }}"
+      when:
+        - constructa_letsencrypt_email is defined
+        - constructa_letsencrypt_email | length > 0
+
+    - name: Ensure LetsEncrypt cron job
+      become: true
+      command:
+        argv:
+          - dokku
+          - letsencrypt:cron-job
+          - --add
+      register: constructa_letsencrypt_cron
+      changed_when: "Adding cron job" in (constructa_letsencrypt_cron.stdout | default(''))
+      failed_when: constructa_letsencrypt_cron.rc not in [0]
+      when:
+        - constructa_letsencrypt_email is defined
+        - constructa_letsencrypt_email | length > 0
 
     - name: Ensure host gateway docker option for deploy
       become: true
