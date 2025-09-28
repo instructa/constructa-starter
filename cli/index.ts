@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
 import { execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { basename } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import * as p from '@clack/prompts';
 import { blue, cyan, green, red, yellow } from 'ansis';
 import { defineCommand, runMain } from 'citty';
@@ -116,6 +117,68 @@ const resolveDokkuRemote = (env: string): DokkuRemoteDetails => {
 
   return { remoteName, host, app };
 };
+
+const parseHostParts = (host: string) => {
+  let username = '';
+  let hostname = host;
+  let port: string | undefined;
+
+  if (host.includes('@')) {
+    const [user, rest] = host.split('@');
+    username = user;
+    hostname = rest;
+  }
+
+  if (hostname.includes(':')) {
+    const [name, portStr] = hostname.split(':');
+    hostname = name;
+    port = portStr;
+  }
+
+  return { username, hostname, port };
+};
+
+type TunnelEntry = {
+  command: string;
+};
+
+const getDataDir = () => {
+  const dir = join(process.cwd(), '.ex0');
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+};
+
+const tunnelStatePath = () => join(getDataDir(), 'tunnels.json');
+
+const readTunnelEntries = (): TunnelEntry[] => {
+  const path = tunnelStatePath();
+  if (!existsSync(path)) {
+    return [];
+  }
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')) as TunnelEntry[];
+  } catch {
+    return [];
+  }
+};
+
+const writeTunnelEntries = (entries: TunnelEntry[]) => {
+  writeFileSync(tunnelStatePath(), JSON.stringify(entries, null, 2), 'utf8');
+};
+
+const clearTunnelEntries = () => {
+  if (existsSync(tunnelStatePath())) {
+    writeFileSync(tunnelStatePath(), '[]', 'utf8');
+  }
+};
+
+const TUNNEL_FORWARDS = [
+  { name: 'MinIO API', localPort: 9000, remotePort: 9000, url: 'http://localhost:9000' },
+  { name: 'MinIO Console', localPort: 9001, remotePort: 9001, url: 'http://localhost:9001' },
+  { name: 'Mailhog UI', localPort: 8025, remotePort: 8025, url: 'http://localhost:8025' },
+];
 
 const initCommand = defineCommand({
   meta: {
@@ -428,6 +491,190 @@ const deployImageCommand = defineCommand({
   },
 });
 
+const tunnelUpCommand = defineCommand({
+  meta: {
+    name: 'up',
+    description: 'Open SSH tunnels for self-hosted services (MinIO, Mailhog)',
+  },
+  args: {
+    env: {
+      type: 'string',
+      description: 'Target environment: dev or prod',
+      default: 'dev',
+    },
+    user: {
+      type: 'string',
+      description: 'SSH user to use for the tunnel (defaults to deploy@host)',
+      default: '',
+    },
+  },
+  async run({ args }) {
+    const { host } = resolveDokkuRemote(args.env);
+    const { username, hostname, port } = parseHostParts(host);
+    const sshUser = args.user || (username && username !== 'dokku' ? username : 'deploy');
+    const target = `${sshUser}@${hostname}${port ? `:${port}` : ''}`;
+
+    const forwards = TUNNEL_FORWARDS.flatMap((forward) => [
+      '-L',
+      `${forward.localPort}:127.0.0.1:${forward.remotePort}`,
+    ]);
+
+    const sshArgs = ['-N', '-f', '-T', '-o', 'ExitOnForwardFailure=yes', ...forwards, target];
+
+    console.log(cyan(`Opening tunnels to ${target}...`));
+    const result = spawnSync('ssh', sshArgs, { stdio: 'inherit' });
+    if (result.status !== 0) {
+      console.error(red('❌ Failed to establish tunnels. Check SSH connectivity and permissions.'));
+      process.exit(result.status ?? 1);
+    }
+
+    const commandString = ['ssh', ...sshArgs].join(' ');
+    const entries = readTunnelEntries();
+    entries.push({ command: commandString });
+    writeTunnelEntries(entries);
+
+    console.log(green('✅ Tunnels established. Access services locally:'));
+    for (const forward of TUNNEL_FORWARDS) {
+      console.log(`  • ${forward.name}: ${forward.url}`);
+    }
+    console.log(yellow('Use `pnpm run ex0 -- tunnel down` to close tunnels when finished.'));
+  },
+});
+
+const tunnelDownCommand = defineCommand({
+  meta: {
+    name: 'down',
+    description: 'Close SSH tunnels opened with `tunnel up`',
+  },
+  async run() {
+    const entries = readTunnelEntries();
+    if (!entries.length) {
+      console.log(yellow('ℹ️ No tunnel state file found. Nothing to close.'));
+      return;
+    }
+
+    let closed = 0;
+    for (const entry of entries) {
+      try {
+        spawnSync('pkill', ['-f', entry.command], { stdio: 'ignore' });
+        closed += 1;
+      } catch {
+        // ignore
+      }
+    }
+
+    clearTunnelEntries();
+    console.log(green(`✅ Closed ${closed} tunnel${closed === 1 ? '' : 's'}.`));
+  },
+});
+
+const tunnelStatusCommand = defineCommand({
+  meta: {
+    name: 'status',
+    description: 'Show status of SSH tunnels',
+  },
+  async run() {
+    const entries = readTunnelEntries();
+    if (!entries.length) {
+      console.log(yellow('ℹ️ No recorded tunnels. Run `pnpm run ex0 -- tunnel up` first.'));
+      return;
+    }
+
+    console.log(cyan('Current tunnel processes:'));
+    for (const entry of entries) {
+      const res = spawnSync('pgrep', ['-f', entry.command], { stdio: 'pipe' });
+      const active = res.status === 0 && res.stdout.toString().trim().length > 0;
+      console.log(`  • ${entry.command} ${active ? green('(active)') : red('(not running)')}`);
+    }
+    console.log(cyan('Local endpoints:'));
+    for (const forward of TUNNEL_FORWARDS) {
+      console.log(`    ${forward.name}: ${forward.url}`);
+    }
+  },
+});
+
+const tunnelCommand = defineCommand({
+  meta: {
+    name: 'tunnel',
+    description: 'Manage SSH tunnels to internal services',
+  },
+  subCommands: {
+    up: tunnelUpCommand,
+    down: tunnelDownCommand,
+    status: tunnelStatusCommand,
+  },
+});
+
+const SERVICES = [
+  {
+    key: 'minio',
+    name: 'MinIO Object Storage',
+    description: 'S3-compatible storage UI & API',
+    links: [
+      { label: 'Console', url: 'http://localhost:9001', note: 'Requires tunnel' },
+      { label: 'S3 API', url: 'http://localhost:9000', note: 'Requires tunnel' },
+    ],
+  },
+  {
+    key: 'mailhog',
+    name: 'Mailhog SMTP viewer',
+    description: 'Dev mail inbox UI',
+    links: [{ label: 'Web UI', url: 'http://localhost:8025', note: 'Requires tunnel' }],
+  },
+];
+
+const servicesListCommand = defineCommand({
+  meta: {
+    name: 'list',
+    description: 'List self-hosted services and access URLs',
+  },
+  async run() {
+    console.log(cyan('Available internal services (accessible once tunnels are up):'));
+    for (const svc of SERVICES) {
+      console.log(`\n${green(svc.name)} – ${svc.description}`);
+      for (const link of svc.links) {
+        console.log(`  • ${link.label}: ${link.url} (${link.note})`);
+      }
+    }
+    console.log(`\n${yellow('Tip:')} run ${cyan('pnpm run ex0 -- tunnel up')} to open local forwards.`);
+  },
+});
+
+const createServiceCommand = (key: string) =>
+  defineCommand({
+    meta: {
+      name: key,
+      description: `Show ${key} service details`,
+    },
+    async run() {
+      const svc = SERVICES.find((service) => service.key === key);
+      if (!svc) {
+        console.error(red(`Unknown service: ${key}`));
+        process.exit(1);
+      }
+      console.log(`${green(svc.name)} – ${svc.description}`);
+      for (const link of svc.links) {
+        console.log(`  • ${link.label}: ${link.url} (${link.note})`);
+      }
+      console.log(`\n${yellow('Hint:')} start tunnels with ${cyan('pnpm run ex0 -- tunnel up')}.`);
+    },
+  });
+
+const servicesCommand = defineCommand({
+  meta: {
+    name: 'services',
+    description: 'Describe internal services (MinIO, Mailhog, etc.)',
+  },
+  subCommands: {
+    list: servicesListCommand,
+    minio: createServiceCommand('minio'),
+    mailhog: createServiceCommand('mailhog'),
+  },
+  async run() {
+    await servicesListCommand.run({ args: {}, options: {}, rawArgs: [] });
+  },
+});
+
 const main = defineCommand({
   meta: {
     name: 'cli',
@@ -443,6 +690,8 @@ const main = defineCommand({
     testdata: testdataCommand,
     deploy: deployCommand,
     'deploy-image': deployImageCommand,
+    tunnel: tunnelCommand,
+    services: servicesCommand,
   },
 });
 

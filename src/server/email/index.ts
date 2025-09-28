@@ -13,7 +13,9 @@ export function getEmailProvider(): EmailProvider {
     return emailProvider;
   }
 
-  const provider = process.env.EMAIL_PROVIDER || 'console';
+  const provider =
+    process.env.EMAIL_PROVIDER ??
+    (process.env.NODE_ENV === 'production' ? 'smtp' : 'mailhog');
 
   switch (provider) {
     case 'resend':
@@ -41,6 +43,11 @@ export function getEmailProvider(): EmailProvider {
       break;
 
     case 'mailhog':
+      if (process.env.NODE_ENV === 'production') {
+        console.warn(
+          'Email provider is set to mailhog while NODE_ENV=production. Switch to SMTP or another transactional provider before deploying.'
+        );
+      }
       emailProvider = new MailhogProvider(
         process.env.MAILHOG_HOST || 'localhost',
         Number.parseInt(process.env.MAILHOG_PORT || '1025')
