@@ -2,20 +2,27 @@
 # fill in values before running the playbook. Keep the populated
 # file out of version control.
 
+# Set to true only on the very first run when no app image exists yet.
+# After the first Dokku deploy (which builds dokku/constructa:latest), set back to false.
+constructa_enable_registry_login: false
+
 constructa_app_name: constructa
 constructa_domain: app.example.com
 # Optional list of domains that should 301 redirect to constructa_domain.
 # Example: ['www.app.example.com']
 constructa_redirect_domains: []
-constructa_redirect_plugin_repo: 'https://github.com/dokku/dokku-redirect.git'
-constructa_letsencrypt_plugin_repo: 'https://github.com/dokku/dokku-letsencrypt.git'
-constructa_letsencrypt_email: ''
 constructa_deploy_dir: /opt/constructa
 
 constructa_enable_registry_login: false
 constructa_registry_server: ghcr.io
 constructa_registry_username: 'your-ghcr-username'
 constructa_registry_password: 'ghp_...'
+
+constructa_redirect_plugin_repo: 'https://github.com/dokku/dokku-redirect.git'
+# lets encrypt
+constructa_letsencrypt_plugin_repo: 'https://github.com/dokku/dokku-letsencrypt.git'
+constructa_letsencrypt_email: ''
+
 
 # Values rendered into /opt/constructa/.env for the compose stack.
 # Strings are quoted to preserve literal values.
