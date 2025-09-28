@@ -34,11 +34,6 @@
       failed_when: false
       when: constructa_swap_file is defined
 
-    - name: Determine swap activation state
-      set_fact:
-        constructa_swap_active: "{{ constructa_swap_file in (constructa_swap_status.stdout | default('')) }}"
-      when: constructa_swap_file is defined
-
     - name: Create swapfile when needed
       become: true
       command: fallocate -l {{ constructa_swap_size }} {{ constructa_swap_file }}
@@ -47,7 +42,7 @@
       when:
         - constructa_swap_file is defined
         - constructa_swap_size is defined
-        - not (constructa_swap_active | default(false))
+        - constructa_swap_file not in (constructa_swap_status.stdout_lines | default([]))
 
     - name: Stat swapfile
       become: true
@@ -67,13 +62,25 @@
         - constructa_swap_file is defined
         - constructa_swap_stat.stat.exists | default(false)
 
+    - name: Ensure swapfile owned by root when already active
+      become: true
+      file:
+        path: "{{ constructa_swap_file }}"
+        owner: root
+        group: root
+        mode: '0600'
+      when:
+        - constructa_swap_file is defined
+        - constructa_swap_stat.stat.exists | default(false)
+        - constructa_swap_file in (constructa_swap_status.stdout_lines | default([]))
+
     - name: Initialize swapfile
       become: true
       command: mkswap {{ constructa_swap_file }}
       when:
         - constructa_swap_file is defined
         - constructa_swap_stat.stat.exists | default(false)
-        - not (constructa_swap_active | default(false))
+        - constructa_swap_file not in (constructa_swap_status.stdout_lines | default([]))
 
     - name: Ensure swapfile entry in fstab
       become: true
@@ -88,12 +95,12 @@
       become: true
       command: swapon {{ constructa_swap_file }}
       register: constructa_swapon_cmd
-      changed_when: not (constructa_swap_active | default(false)) and constructa_swapon_cmd.rc == 0
-      failed_when: (constructa_swap_active | default(false)) == false and constructa_swapon_cmd.rc != 0
+      changed_when: constructa_swap_file not in (constructa_swap_status.stdout_lines | default([])) and constructa_swapon_cmd.rc == 0
+      failed_when: constructa_swap_file not in (constructa_swap_status.stdout_lines | default([])) and constructa_swapon_cmd.rc != 0
       when:
         - constructa_swap_file is defined
         - constructa_swap_stat.stat.exists | default(false)
-        - not (constructa_swap_active | default(false))
+        - constructa_swap_file not in (constructa_swap_status.stdout_lines | default([]))
 
   tasks:
     - name: Sync compose bundle
