@@ -28,10 +28,15 @@
 
     - name: Check for active swap
       become: true
-      command: swapon --show --noheadings --output=NAME
+      command: swapon --show=NAME --noheadings
       register: constructa_swap_status
       changed_when: false
       failed_when: false
+      when: constructa_swap_file is defined
+
+    - name: Determine swap activation state
+      set_fact:
+        constructa_swap_matches: "{{ constructa_swap_status.stdout_lines | default([]) | map('trim') | select('equalto', constructa_swap_file) | list | length }}"
       when: constructa_swap_file is defined
 
     - name: Create swapfile when needed
@@ -42,7 +47,7 @@
       when:
         - constructa_swap_file is defined
         - constructa_swap_size is defined
-        - constructa_swap_file not in (constructa_swap_status.stdout_lines | default([]))
+        - (constructa_swap_matches | default(0) | int) == 0
 
     - name: Stat swapfile
       become: true
@@ -72,7 +77,7 @@
       when:
         - constructa_swap_file is defined
         - constructa_swap_stat.stat.exists | default(false)
-        - constructa_swap_file in (constructa_swap_status.stdout_lines | default([]))
+        - (constructa_swap_matches | default(0) | int) > 0
 
     - name: Initialize swapfile
       become: true
@@ -80,7 +85,7 @@
       when:
         - constructa_swap_file is defined
         - constructa_swap_stat.stat.exists | default(false)
-        - constructa_swap_file not in (constructa_swap_status.stdout_lines | default([]))
+        - (constructa_swap_matches | default(0) | int) == 0
 
     - name: Ensure swapfile entry in fstab
       become: true
@@ -95,12 +100,12 @@
       become: true
       command: swapon {{ constructa_swap_file }}
       register: constructa_swapon_cmd
-      changed_when: constructa_swap_file not in (constructa_swap_status.stdout_lines | default([])) and constructa_swapon_cmd.rc == 0
-      failed_when: constructa_swap_file not in (constructa_swap_status.stdout_lines | default([])) and constructa_swapon_cmd.rc != 0
+      changed_when: (constructa_swap_matches | default(0) | int) == 0 and constructa_swapon_cmd.rc == 0
+      failed_when: (constructa_swap_matches | default(0) | int) == 0 and constructa_swapon_cmd.rc != 0
       when:
         - constructa_swap_file is defined
         - constructa_swap_stat.stat.exists | default(false)
-        - constructa_swap_file not in (constructa_swap_status.stdout_lines | default([]))
+        - (constructa_swap_matches | default(0) | int) == 0
 
   tasks:
     - name: Sync compose bundle
@@ -228,6 +233,37 @@
           - "{{ constructa_app_name }}"
           - "{{ constructa_domain }}"
 
+    - name: Determine primary domain for redirects
+      set_fact:
+        constructa_primary_domain: "{{ (constructa_domain | string).split()[0] }}"
+      when: (constructa_redirect_domains | default([])) | length > 0
+
+    - name: Determine if redirect domains configured
+      set_fact:
+        constructa_redirect_enabled: "{{ (constructa_redirect_domains | default([])) | length > 0 }}"
+
+    - name: Check installed Dokku plugins
+      become: true
+      command:
+        argv:
+          - dokku
+          - plugin:list
+      register: constructa_dokku_plugins
+      changed_when: false
+      when: constructa_redirect_enabled | default(false) | bool
+
+    - name: Install Dokku redirect plugin when missing
+      become: true
+      command:
+        argv:
+          - dokku
+          - plugin:install
+          - "{{ constructa_redirect_plugin_repo | default('https://github.com/dokku/dokku-redirect.git') }}"
+      when:
+        - constructa_redirect_enabled | default(false) | bool
+        - constructa_dokku_plugins.stdout is defined
+        - not ('redirect' in (constructa_dokku_plugins.stdout | default('')))
+
     - name: Ensure secondary domains exist
       become: true
       command:
@@ -239,20 +275,21 @@
       loop: "{{ constructa_redirect_domains | default([]) }}"
       loop_control:
         label: "{{ item }}"
-      when: (constructa_redirect_domains | default([])) | length > 0
+      when: constructa_redirect_enabled | default(false) | bool
 
     - name: Redirect secondary domains to primary
       become: true
       command:
         argv:
           - dokku
-          - domains:add-redirect
+          - redirect:set
           - "{{ constructa_app_name }}"
           - "{{ item }}"
+          - "{{ constructa_primary_domain | default(constructa_domain) }}"
       loop: "{{ constructa_redirect_domains | default([]) }}"
       loop_control:
         label: "{{ item }}"
-      when: (constructa_redirect_domains | default([])) | length > 0
+      when: constructa_redirect_enabled | default(false) | bool
 
     - name: Ensure host gateway docker option for deploy
       become: true
