@@ -121,6 +121,7 @@
         mode: "0600"
         owner: "{{ ansible_user | default('deploy') }}"
         group: "{{ ansible_user | default('deploy') }}"
+      tags: [env]
 
     - name: Docker login to registry (optional)
       become: true
@@ -317,6 +318,7 @@
       when:
         - constructa_letsencrypt_email is defined
         - constructa_letsencrypt_email | length > 0
+      tags: [env]
 
     - name: Enable LetsEncrypt for app
       become: true
@@ -328,6 +330,7 @@
       when:
         - constructa_letsencrypt_email is defined
         - constructa_letsencrypt_email | length > 0
+      tags: [env]
 
     - name: Ensure LetsEncrypt cron job
       become: true
@@ -343,6 +346,7 @@
       when:
         - constructa_letsencrypt_email is defined
         - constructa_letsencrypt_email | length > 0
+      tags: [env]
 
     - name: Ensure host gateway docker option for deploy
       become: true
@@ -366,6 +370,7 @@
       loop: "{{ constructa_dokku_config | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
+      tags: [env]
 
     - name: Allow docker network access to compose service ports
       become: true
