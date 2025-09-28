@@ -26,7 +26,7 @@ RUN corepack enable && corepack prepare pnpm@9.14.4 --activate
 
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=5000
 
 # Install production dependencies only
 COPY package.json pnpm-lock.yaml ./
@@ -45,7 +45,7 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 USER nodejs
 
-EXPOSE 3000
+EXPOSE 5000
 
 # TanStack Start default entry
 CMD ["node", ".output/server/index.mjs"]

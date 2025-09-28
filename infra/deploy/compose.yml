@@ -14,7 +14,7 @@ services:
     volumes:
       - ex0-data:/var/lib/postgresql/data
     ports:
-      - '127.0.0.1:5432:5432'
+      - '${HOST_BIND_ADDR:-127.0.0.1}:5432:5432'
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
       interval: 5s
@@ -32,8 +32,8 @@ services:
     volumes:
       - ex0-minio-data:/data
     ports:
-      - '127.0.0.1:9000:9000'
-      - '127.0.0.1:9001:9001'
+      - '${HOST_BIND_ADDR:-127.0.0.1}:9000:9000'
+      - '${HOST_BIND_ADDR:-127.0.0.1}:9001:9001'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 5s
@@ -62,7 +62,7 @@ services:
     volumes:
       - ex0-redis-data:/data
     ports:
-      - '127.0.0.1:6379:6379'
+      - '${HOST_BIND_ADDR:-127.0.0.1}:6379:6379'
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
@@ -79,7 +79,7 @@ services:
     volumes:
       - ex0-meili-data:/meili_data
     ports:
-      - '127.0.0.1:7700:7700'
+      - '${HOST_BIND_ADDR:-127.0.0.1}:7700:7700'
     healthcheck:
       test: ['CMD', 'curl', '-sSf', 'http://localhost:7700/health']
       interval: 5s
@@ -95,7 +95,10 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?}
       NODE_ENV: production
-    entrypoint: ['sh', '-c', 'pnpm run db:migrate']
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - cd /app && /app/.heroku/node/bin/node node_modules/drizzle-kit/dist/index.js migrate
     restart: 'no'
 
   # Background worker (BullMQ)
@@ -110,8 +113,6 @@ services:
       meilisearch:
         condition: service_healthy
       provision-minio:
-        condition: service_completed_successfully
-      migrate:
         condition: service_completed_successfully
     environment:
       NODE_ENV: production
@@ -134,7 +135,10 @@ services:
       MEILI_HOST: ${MEILI_HOST:-http://127.0.0.1:7700}
       MEILI_API_KEY: ${MEILI_API_KEY:-${MEILI_MASTER_KEY}}
       SEARCH_REINDEX_ON_BOOT: ${SEARCH_REINDEX_ON_BOOT:-false}
-    command: ['node', '--import', 'tsx/loader', 'src/worker/index.ts']
+    command:
+      - /bin/bash
+      - -lc
+      - cd /app && /app/.heroku/node/bin/node --import tsx/loader src/worker/index.ts
     restart: unless-stopped
 
 volumes:

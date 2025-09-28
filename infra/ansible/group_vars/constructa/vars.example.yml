@@ -1,0 +1,79 @@
+# Copy this file to infra/ansible/group_vars/constructa/vars.yml and
+# fill in values before running the playbook. Keep the populated
+# file out of version control.
+
+constructa_app_name: constructa
+constructa_domain: app.example.com
+constructa_deploy_dir: /opt/constructa
+
+constructa_enable_registry_login: false
+constructa_registry_server: ghcr.io
+constructa_registry_username: 'your-ghcr-username'
+constructa_registry_password: 'ghp_...'
+
+# Values rendered into /opt/constructa/.env for the compose stack.
+# Strings are quoted to preserve literal values.
+constructa_compose_env:
+  # For "Dokku-first": set after the first dokku deploy:
+  #   APP_IMAGE="dokku/constructa"  APP_TAG="latest"
+  # For registry pull (e.g., GHCR):
+  #   APP_IMAGE="ghcr.io/your-org/your-repo/app"  APP_TAG="sha-or-tag"
+  APP_IMAGE: 'ghcr.io/your-org/your-repo/app'
+  APP_TAG: 'latest'
+
+  # Compose exposes services to the host on this address. Dokku apps reach
+  # them through host.docker.internal, so bind to 0.0.0.0 on the VPS.
+  HOST_BIND_ADDR: '0.0.0.0'
+
+  POSTGRES_USER: 'ex0'
+  POSTGRES_PASSWORD: 'change-me'
+  POSTGRES_DB: 'ex0'
+  MINIO_ROOT_USER: 'minioadmin'
+  MINIO_ROOT_PASSWORD: 'minioadmin'
+  MINIO_BUCKET: 'constructa-files'
+  MEILI_MASTER_KEY: 'changeme-master-key'
+  REDIS_URL: 'redis://127.0.0.1:6379'
+  MEILI_HOST: 'http://127.0.0.1:7700'
+  MEILI_API_KEY: 'changeme-master-key'
+  S3_ENDPOINT: 'http://127.0.0.1:9000'
+  S3_REGION: 'us-east-1'
+  S3_ACCESS_KEY_ID: 'minioadmin'
+  S3_SECRET_ACCESS_KEY: 'minioadmin'
+  S3_BUCKET: 'constructa-files'
+  S3_ENABLE_PATH_STYLE: '1'
+  S3_PREVIEW_URL_EXPIRE_IN: '7200'
+  SEARCH_REINDEX_ON_BOOT: 'false'
+  BULLMQ_PREFIX: 'constructa'
+  DAILY_CREDIT_REFILL_CRON: '0 3 * * *'
+  JOB_DAILY_CREDIT_REFILL_URL: 'http://app:3000/api/jobs/daily-credit-refill'
+  JOBS_SECRET: 'change-me'
+  DATABASE_URL: 'postgresql://ex0:change-me@127.0.0.1:5432/ex0'
+
+constructa_enable_docker_gc: false
+constructa_docker_gc_schedule: weekly # or 'daily', or a full OnCalendar expr
+constructa_docker_gc_prune_age: 720h # only prune artifacts unused for this long
+constructa_docker_allowed_cidr: '172.17.0.0/16'
+constructa_run_compose_migrate: false
+
+# Dokku config key/values that point the app at the loopback services.
+# DATABASE_URL should match constructa_compose_env but use host.docker.internal.
+constructa_dokku_config:
+  NODE_ENV: production
+  PORT: '5000'
+  DOKKU_PROXY_PORT_MAP: 'http:80:5000'
+  DATABASE_URL: 'postgresql://ex0:change-me@host.docker.internal:5432/ex0'
+  S3_ENDPOINT: 'http://host.docker.internal:9000'
+  S3_REGION: 'us-east-1'
+  S3_ACCESS_KEY_ID: 'minioadmin'
+  S3_SECRET_ACCESS_KEY: 'minioadmin'
+  S3_BUCKET: 'constructa-files'
+  S3_ENABLE_PATH_STYLE: '1'
+  S3_PREVIEW_URL_EXPIRE_IN: '7200'
+  MEILI_HOST: 'http://host.docker.internal:7700'
+  MEILI_API_KEY: 'changeme-master-key'
+  REDIS_URL: 'redis://host.docker.internal:6379'
+  SEARCH_REINDEX_ON_BOOT: 'false'
+  BULLMQ_PREFIX: 'constructa'
+  DAILY_CREDIT_REFILL_CRON: '0 3 * * *'
+  JOB_DAILY_CREDIT_REFILL_URL: 'http://app:3000/api/jobs/daily-credit-refill'
+  JOBS_SECRET: 'change-me'

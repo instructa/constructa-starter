@@ -1,0 +1,246 @@
+---
+- name: Provision Constructa stack
+  hosts: constructa
+  gather_facts: false
+  pre_tasks:
+    - name: Ensure python3 exists on host
+      become: true
+      raw: test -e /usr/bin/python3 || (apt-get update && apt-get install -y python3)
+      changed_when: false
+
+    - name: Fail if required variables are missing
+      assert:
+        that:
+          - constructa_app_name is defined
+          - constructa_domain is defined
+          - constructa_compose_env is defined
+          - constructa_dokku_config is defined
+        fail_msg: "Populate infra/ansible/group_vars/constructa/vars.yml (see vars.example.yml)."
+
+    - name: Ensure compose directory exists
+      become: true
+      file:
+        path: "{{ constructa_deploy_dir }}"
+        state: directory
+        owner: "{{ ansible_user | default('deploy') }}"
+        group: "{{ ansible_user | default('deploy') }}"
+        mode: "0755"
+
+  tasks:
+    - name: Sync compose bundle
+      ansible.posix.synchronize:
+        src: "{{ playbook_dir }}/../deploy/"
+        dest: "{{ constructa_deploy_dir }}/"
+        delete: true
+
+    - name: Render compose env file
+      template:
+        src: constructa.env.j2
+        dest: "{{ constructa_deploy_dir }}/.env"
+        mode: "0600"
+        owner: "{{ ansible_user | default('deploy') }}"
+        group: "{{ ansible_user | default('deploy') }}"
+
+    - name: Docker login to registry (optional)
+      become: true
+      shell: 'echo "{{ constructa_registry_password }}" | docker login {{ constructa_registry_server | default("ghcr.io") }} -u "{{ constructa_registry_username }}" --password-stdin'
+      no_log: true
+      when: constructa_enable_registry_login | default(false) | bool
+
+    - name: Ensure core compose services are running
+      become: true
+      command:
+        argv:
+          - docker
+          - compose
+          - -f
+          - compose.yml
+          - up
+          - -d
+          - db
+          - minio
+          - redis
+          - meilisearch
+      args:
+        chdir: "{{ constructa_deploy_dir }}"
+      register: compose_core
+      changed_when: >-
+        'Creating' in compose_core.stdout or
+        'Starting' in compose_core.stdout or
+        'Recreating' in compose_core.stdout
+
+    - name: Provision MinIO bucket
+      become: true
+      command:
+        argv:
+          - docker
+          - compose
+          - -f
+          - compose.yml
+          - run
+          - --rm
+          - provision-minio
+      args:
+        chdir: "{{ constructa_deploy_dir }}"
+      register: provision_minio
+      changed_when: false
+      failed_when:
+        - provision_minio.rc not in [0]
+
+    - name: Run database migrations
+      become: true
+      command:
+        argv:
+          - docker
+          - compose
+          - -f
+          - compose.yml
+          - run
+          - --rm
+          - migrate
+      args:
+        chdir: "{{ constructa_deploy_dir }}"
+      register: migrate_result
+      changed_when: true
+      when: constructa_run_compose_migrate | default(false) | bool
+
+    - name: Ensure compose worker is running
+      become: true
+      command:
+        argv:
+          - docker
+          - compose
+          - -f
+          - compose.yml
+          - up
+          - -d
+          - worker
+      args:
+        chdir: "{{ constructa_deploy_dir }}"
+      register: compose_worker
+      changed_when: >-
+        'Creating' in compose_worker.stdout or
+        'Starting' in compose_worker.stdout or
+        'Recreating' in compose_worker.stdout
+
+    - name: Check if Dokku app exists
+      become: true
+      command:
+        argv:
+          - dokku
+          - apps:exists
+          - "{{ constructa_app_name }}"
+      register: dokku_app_exists
+      failed_when: dokku_app_exists.rc not in [0, 1]
+      changed_when: false
+
+    - name: Create Dokku app when missing
+      become: true
+      command:
+        argv:
+          - dokku
+          - apps:create
+          - "{{ constructa_app_name }}"
+      when: dokku_app_exists.rc != 0
+
+    - name: Configure Dokku domain
+      become: true
+      command:
+        argv:
+          - dokku
+          - domains:set
+          - "{{ constructa_app_name }}"
+          - "{{ constructa_domain }}"
+
+    - name: Ensure host gateway docker option for deploy
+      become: true
+      shell: "dokku docker-options:add {{ constructa_app_name }} deploy '--add-host=host.docker.internal:host-gateway'"
+      register: dokku_add_deploy
+      failed_when: dokku_add_deploy.rc not in [0]
+      changed_when: dokku_add_deploy.stderr is defined and 'already exists' not in dokku_add_deploy.stderr
+
+    - name: Ensure host gateway docker option for run
+      become: true
+      shell: "dokku docker-options:add {{ constructa_app_name }} run '--add-host=host.docker.internal:host-gateway'"
+      register: dokku_add_run
+      failed_when: dokku_add_run.rc not in [0]
+      changed_when: dokku_add_run.stderr is defined and 'already exists' not in dokku_add_run.stderr
+
+    - name: Set Dokku config values
+      become: true
+      shell: >-
+        dokku config:set --no-restart {{ constructa_app_name }}
+        {{ item.key }}='{{ item.value }}'
+      loop: "{{ constructa_dokku_config | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Allow docker network access to compose service ports
+      become: true
+      command: >-
+        ufw allow from {{ constructa_docker_allowed_cidr | default('172.17.0.0/16') }}
+        to any port {{ item }} proto tcp
+      loop:
+        - 5432
+        - 9000
+        - 9001
+        - 6379
+        - 7700
+      register: ufw_allow_result
+      changed_when: "'Rule added' in ufw_allow_result.stdout"
+      failed_when: ufw_allow_result.rc not in [0]
+
+    - name: Install docker-gc script (optional)
+      become: true
+      copy:
+        dest: /usr/local/bin/docker-gc.sh
+        mode: "0755"
+        content: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          AGE="${1:-{{ constructa_docker_gc_prune_age | default('720h') }}}"
+          echo "[docker-gc] Pruning unused images/build-cache older than ${AGE}..."
+          docker image prune -a -f --filter "until=${AGE}" || true
+          docker builder prune -a -f --filter "unused-for=${AGE}" || true
+      when: constructa_enable_docker_gc | default(false) | bool
+
+    - name: Install docker-gc systemd service (optional)
+      become: true
+      copy:
+        dest: /etc/systemd/system/docker-gc.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Docker image/build cache garbage collection
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/bin/docker-gc.sh {{ constructa_docker_gc_prune_age | default('720h') }}
+      when: constructa_enable_docker_gc | default(false) | bool
+
+    - name: Install docker-gc systemd timer (optional)
+      become: true
+      copy:
+        dest: /etc/systemd/system/docker-gc.timer
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Run Docker GC periodically
+
+          [Timer]
+          OnCalendar={{ constructa_docker_gc_schedule | default('weekly') }}
+          Persistent=true
+          AccuracySec=1h
+
+          [Install]
+          WantedBy=timers.target
+      when: constructa_enable_docker_gc | default(false) | bool
+
+    - name: Reload systemd and enable docker-gc timer (optional)
+      become: true
+      systemd:
+        daemon_reload: true
+        name: docker-gc.timer
+        enabled: true
+        state: started
+      when: constructa_enable_docker_gc | default(false) | bool

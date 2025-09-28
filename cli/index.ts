@@ -214,6 +214,38 @@ const recreateCommand = defineCommand({
   },
 });
 
+const gcCommand = defineCommand({
+  meta: {
+    name: 'gc',
+    description: 'Prune unused Docker images and build cache safely',
+  },
+  args: {
+    age: {
+      type: 'string',
+      description: 'Only prune artifacts unused for this long (e.g., 168h, 30m, 7h30m)',
+      default: '720h', // 30 days
+    },
+    dry: {
+      type: 'boolean',
+      description: 'Show what would be removed without deleting',
+      default: false,
+    },
+  },
+  async run({ args }) {
+    checkDocker();
+    console.log(cyan(`🧹 Docker GC: pruning unused images/build cache older than ${args.age}...`));
+    if (args.dry) {
+      runCommand('docker system df', 'Show Docker disk usage (dry run)');
+      console.log(yellow('Dry run mode: not deleting anything. To prune, run without --dry.'));
+      return;
+    }
+    runCommand('docker system df', 'Show Docker disk usage (before)');
+    runCommand(`sh -c 'docker image prune -a -f --filter "until=${args.age}" || true'`, 'Prune unused images');
+    runCommand(`sh -c 'docker builder prune -a -f --filter "unused-for=${args.age}" || true'`, 'Prune build cache');
+    runCommand('docker system df', 'Show Docker disk usage (after)');
+  },
+});
+
 const testdataCommand = defineCommand({
   meta: {
     name: 'testdata',
@@ -334,6 +366,7 @@ const main = defineCommand({
     stop: stopCommand,
     reload: reloadCommand,
     recreate: recreateCommand,
+    gc: gcCommand,
     testdata: testdataCommand,
     deploy: deployCommand,
   },

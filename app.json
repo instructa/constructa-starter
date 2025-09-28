@@ -19,10 +19,20 @@
       "size": "free"
     }
   },
-  "addons": ["dokku-postgres", "dokku-redis"],
+  "addons": [],
   "buildpacks": [
     {
       "url": "heroku/nodejs"
     }
-  ]
+  ],
+  "checks": {
+    "web": [
+      {
+        "type": "http",
+        "path": "/health",
+        "interval": 10,
+        "timeout": 5
+      }
+    ]
+  }
 }

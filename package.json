@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+  "build": "vite build",
+  "heroku-postbuild": "pnpm run build",
     "start": "node .output/server/index.mjs",
     "worker": "node --import tsx/loader src/worker/index.ts",
     "search:sync": "node --import tsx/loader src/scripts/search-sync.ts",

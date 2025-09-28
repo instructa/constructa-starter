@@ -16,6 +16,8 @@ pnpm run ex0 -- deploy --env dev
 
 Dokku builds your Docker image from the repo and releases it.
 
+> See **docs/constructa/hosting.md → Dokku‑first** for a zero‑registry path that lets Compose reuse the locally built Dokku image (`dokku/constructa:latest`).
+
 ---
 
 ## B) GitHub Actions (recommended, promotes repeatability)
@@ -46,6 +48,34 @@ For each environment (**dev** and **prod**), set:
   * Run **migrations**, start **worker**
   * **Deploy** image to Dokku
   * Enable or renew **Let's Encrypt**
+
+---
+
+## Troubleshooting: image pull failures
+
+If Ansible fails on `migrate`/`worker` with "image not found":
+
+1. **Dokku‑first (no registry)**
+   Deploy once to Dokku so it builds `dokku/constructa:latest`, then set in `/opt/constructa/.env` (or Ansible vars):
+
+   ```
+   APP_IMAGE="dokku/constructa"
+   APP_TAG="latest"
+   ```
+
+   Re-run Ansible.
+
+2. **Registry pull (GHCR)**
+   Configure registry login in `infra/ansible/group_vars/constructa/vars.yml`:
+
+   ```yml
+   constructa_enable_registry_login: true
+   constructa_registry_server: ghcr.io
+   constructa_registry_username: "YOUR_GHCR_USERNAME"
+   constructa_registry_password: "YOUR_GHCR_TOKEN"
+   ```
+
+   Ensure `APP_IMAGE`/`APP_TAG` point to your GHCR path/tag.
 
 ---
 
