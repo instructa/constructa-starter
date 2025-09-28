@@ -51,6 +51,8 @@ What the playbook does:
 * runs bucket provisioning + `pnpm run db:migrate`
 * ensures the Dokku app exists and points to `host.docker.internal`
 * provisions a swap file (`constructa_swap_file` / `constructa_swap_size`) so Docker builds have enough memory
+* installs the **dokku-redirect** plugin and adds 301 redirects for any `constructa_redirect_domains`
+* installs the **dokku-letsencrypt** plugin, sets `DOKKU_LETSENCRYPT_EMAIL`, enables certificates, and schedules renewals when `constructa_letsencrypt_email` is provided
 * if you are using Dokku-first, sets `HOST_BIND_ADDR=0.0.0.0` so Dokku
   containers can reach the compose services via the host gateway
 
@@ -79,7 +81,7 @@ Use this if you don't want a registry at all.
    APP_TAG: "latest"
    ```
 
-   Leave `constructa_run_compose_migrate` at its default `false`; Dokku already executes migrations during deploy. Re-run the playbook and it will (re)start the worker using the **local Dokku image**—no registry push/pull needed.
+   Leave `constructa_run_compose_migrate` at its default `false`; Dokku already executes migrations during deploy. Re-run the playbook and it will (re)start the worker using the **local Dokku image**—no registry push/pull needed. The playbook will also refresh redirects and LetsEncrypt certs after the new domain config is in place.
 
 Need to bypass Dokku’s build step entirely? Build and ship the image from your laptop in one line:
 
@@ -93,7 +95,7 @@ This command runs `docker build`, streams the image over SSH, and executes `dokk
 
 ## 2) DNS
 
-Point your app domain (e.g. `app.example.com`) to the server's IP (a Cloudflare proxied A record is fine).
+Point your app domain (e.g. `app.example.com`) to the server's IP (a Cloudflare proxied A record is fine). If you want `www.` to 301 to the apex, list it in `constructa_redirect_domains` and rerun the playbook.
 
 ## 3) Boot core services (Compose on the server)
 
@@ -124,6 +126,8 @@ docker compose -f compose.yml up -d worker
 
 ## 4) Create the Dokku app
 
+> If you ran the Ansible playbook in step 1.5, Dokku has already been configured with the app, domains, redirect plugin, LetsEncrypt, and docker options. Use this section only for manual bootstrap or disaster recovery.
+
 ```bash
 # one-time app create
 ssh root@your.server "dokku apps:create constructa"
@@ -152,6 +156,8 @@ Enable HTTPS:
 ```bash
 ssh root@your.server "dokku letsencrypt:enable constructa"
 ```
+
+(With Ansible, set `constructa_letsencrypt_email` in your vars file and the playbook will handle plugin install, cert issuance, and the renewal cron job.)
 
 ## 5) Deploy the app
 

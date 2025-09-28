@@ -301,6 +301,9 @@
       loop: "{{ constructa_redirect_domains | default([]) }}"
       loop_control:
         label: "{{ item }}"
+      register: constructa_redirect_result
+      changed_when: constructa_redirect_result.rc == 0
+      failed_when: constructa_redirect_result.rc not in [0, 1] or (constructa_redirect_result.rc == 1 and ('already redirected' not in (constructa_redirect_result.stderr | default('') | lower)) and ('already redirected' not in (constructa_redirect_result.stdout | default('') | lower)))
       when: constructa_redirect_enabled | default(false) | bool
 
     - name: Configure global LetsEncrypt email
@@ -334,7 +337,8 @@
           - letsencrypt:cron-job
           - --add
       register: constructa_letsencrypt_cron
-      changed_when: "Adding cron job" in (constructa_letsencrypt_cron.stdout | default(''))
+      changed_when: >-
+        {{ 'Adding cron job' in (constructa_letsencrypt_cron.stdout | default('')) }}
       failed_when: constructa_letsencrypt_cron.rc not in [0]
       when:
         - constructa_letsencrypt_email is defined
