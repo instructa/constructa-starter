@@ -80,6 +80,14 @@ Use this if you don't want a registry at all.
 
    Leave `constructa_run_compose_migrate` at its default `false`; Dokku already executes migrations during deploy. Re-run the playbook and it will (re)start the worker using the **local Dokku image**—no registry push/pull needed.
 
+Need to bypass Dokku’s build step entirely? Build and ship the image from your laptop in one line:
+
+```bash
+pnpm run ex0 -- deploy-image --env dev
+```
+
+This command runs `docker build`, streams the image over SSH, and executes `dokku git:from-image` under the hood (swap `--env dev` for `--env prod` as needed, and add `--tag my-tag` if you want a different tag).
+
 ---
 
 ## 2) DNS

@@ -44,6 +44,79 @@ const checkDocker = () => {
   }
 };
 
+type DokkuRemoteDetails = {
+  remoteName: string;
+  host: string;
+  app: string;
+};
+
+const resolveDokkuRemote = (env: string): DokkuRemoteDetails => {
+  const desired = env === 'dev' ? 'dokku-dev' : 'dokku-prod';
+  const fallback = 'dokku';
+
+  let remoteName: string | null = null;
+  try {
+    const remotes = execSync('git remote', { stdio: 'pipe' })
+      .toString()
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    remoteName = remotes.includes(desired)
+      ? desired
+      : remotes.includes(fallback)
+        ? fallback
+        : null;
+  } catch {
+    // ignore and handle below
+  }
+
+  if (!remoteName) {
+    console.error(
+      red(
+        `❌ No Dokku remote found. Add one with:\n\n` +
+          `dokku@your.server:constructa -> git remote add dokku-prod dokku@your.server:constructa\n` +
+          `optional dev -> git remote add dokku-dev dokku@your.dev.server:constructa`
+      )
+    );
+    process.exit(1);
+  }
+
+  const remoteUrl = execSync(`git remote get-url ${remoteName}`, { stdio: 'pipe' })
+    .toString()
+    .trim();
+
+  if (!remoteUrl) {
+    console.error(red(`❌ Could not read remote URL for ${remoteName}`));
+    process.exit(1);
+  }
+
+  let host = '';
+  let app = '';
+
+  if (remoteUrl.startsWith('ssh://')) {
+    const parsed = new URL(remoteUrl);
+    const username = parsed.username ? `${parsed.username}@` : '';
+    const port = parsed.port ? `:${parsed.port}` : '';
+    host = `${username}${parsed.hostname}${port}`;
+    app = parsed.pathname.replace(/^\/+/, '');
+  } else {
+    const lastColon = remoteUrl.lastIndexOf(':');
+    if (lastColon === -1) {
+      console.error(red(`❌ Unexpected Dokku remote URL format: ${remoteUrl}`));
+      process.exit(1);
+    }
+    host = remoteUrl.slice(0, lastColon);
+    app = remoteUrl.slice(lastColon + 1).replace(/^\/+/, '');
+  }
+
+  if (!host || !app) {
+    console.error(red(`❌ Unable to parse Dokku host/app from remote URL: ${remoteUrl}`));
+    process.exit(1);
+  }
+
+  return { remoteName, host, app };
+};
+
 const initCommand = defineCommand({
   meta: {
     name: 'init',
@@ -316,42 +389,42 @@ const deployCommand = defineCommand({
     },
   },
   async run({ args }) {
-    const targetRemote = args.env === 'dev' ? 'dokku-dev' : 'dokku-prod';
-    // Fallback to generic "dokku" remote if specific remote not found
-    let remote: string | null = null;
-    try {
-      const remotes = execSync('git remote', { stdio: 'pipe' })
-        .toString()
-        .split('\n')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      remote = remotes.includes(targetRemote)
-        ? targetRemote
-        : remotes.includes('dokku')
-          ? 'dokku'
-          : null;
-    } catch {
-      // ignore
-    }
-
-    if (!remote) {
-      const guidance = [
-        '❌ No Dokku remote found.',
-        '',
-        'Add one of the following and retry:',
-        '',
-        'git remote add dokku-prod dokku@your.server.ip:constructa',
-        '',
-        '# optional dev',
-        '',
-        'git remote add dokku-dev dokku@your.dev.server.ip:constructa',
-      ].join('\n');
-      console.error(red(guidance));
-      process.exit(1);
-    }
-
+    const { remoteName } = resolveDokkuRemote(args.env);
     const pushRef = `${args.ref}:main`;
-    runCommand(`git push ${remote} ${pushRef}`, `Deploy ${args.ref} to ${args.env} (${remote})`);
+    runCommand(`git push ${remoteName} ${pushRef}`, `Deploy ${args.ref} to ${args.env} (${remoteName})`);
+  },
+});
+
+const deployImageCommand = defineCommand({
+  meta: {
+    name: 'deploy-image',
+    description: 'Build a local Docker image and deploy it to Dokku without pushing git refs',
+  },
+  args: {
+    env: {
+      type: 'string',
+      description: 'Target environment: dev or prod',
+      default: 'prod',
+    },
+    tag: {
+      type: 'string',
+      description: 'Image tag to use when saving to Dokku',
+      default: 'latest',
+    },
+  },
+  async run({ args }) {
+    checkDocker();
+    const { host, app } = resolveDokkuRemote(args.env);
+
+    const localTag = `dokku/${app}:${args.tag}`;
+
+    runCommand(`docker build -t ${localTag} .`, 'Build local Docker image');
+
+    const transferCmd = `sh -c "docker save ${localTag} | gzip | ssh ${host} 'gunzip | docker load'"`;
+    runCommand(transferCmd, `Transfer ${localTag} to ${host}`);
+
+    const deployCmd = `ssh ${host} 'dokku git:from-image ${app} ${localTag}'`;
+    runCommand(deployCmd, `Deploy ${localTag} to ${args.env} (${host})`);
   },
 });
 
@@ -369,6 +442,7 @@ const main = defineCommand({
     gc: gcCommand,
     testdata: testdataCommand,
     deploy: deployCommand,
+    'deploy-image': deployImageCommand,
   },
 });
 
