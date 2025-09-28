@@ -20,6 +20,7 @@
 - 💳 **Billing & Payments** - Complete subscription system with Polar.sh integration, credit management, and billing portal (`/dashboard/billing`)
 - 🎨 **Marketing Pages** - Modern landing page with responsive design & dark/light mode
 - 💾 **Database** - Local PostgreSQL with Docker, Supabase ready, Drizzle ORM
+- 🚀 **Deployment** - Hetzner cloud deployment with Docker, Dokku, and automated CI/CD
 - 🤖 **AI-Optimized** - Cursor rules, .ruler auto-generated agent rules, AGENTS.md format for Claude Code/Codex/Cursor, consistent patterns, TypeScript for better AI coding
 - 🛠️ **Developer Tools** - Hot reload, path aliases, Oxlint, Vitest, custom CLI
 - 🐛 **Frontend Error Logging** - Browser-Echo integration for automatic error capture and structured logging
