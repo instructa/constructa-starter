@@ -4,6 +4,9 @@
 
 constructa_app_name: constructa
 constructa_domain: app.example.com
+# Optional list of domains that should 301 redirect to constructa_domain.
+# Example: ['www.app.example.com']
+constructa_redirect_domains: []
 constructa_deploy_dir: /opt/constructa
 
 constructa_enable_registry_login: false

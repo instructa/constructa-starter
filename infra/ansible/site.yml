@@ -36,7 +36,7 @@
 
     - name: Determine swap activation state
       set_fact:
-        constructa_swap_active: "{{ constructa_swap_file in (constructa_swap_status.stdout_lines | default([])) }}"
+        constructa_swap_active: "{{ constructa_swap_file in (constructa_swap_status.stdout | default('')) }}"
       when: constructa_swap_file is defined
 
     - name: Create swapfile when needed
@@ -220,6 +220,32 @@
           - domains:set
           - "{{ constructa_app_name }}"
           - "{{ constructa_domain }}"
+
+    - name: Ensure secondary domains exist
+      become: true
+      command:
+        argv:
+          - dokku
+          - domains:add
+          - "{{ constructa_app_name }}"
+          - "{{ item }}"
+      loop: "{{ constructa_redirect_domains | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      when: (constructa_redirect_domains | default([])) | length > 0
+
+    - name: Redirect secondary domains to primary
+      become: true
+      command:
+        argv:
+          - dokku
+          - domains:add-redirect
+          - "{{ constructa_app_name }}"
+          - "{{ item }}"
+      loop: "{{ constructa_redirect_domains | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      when: (constructa_redirect_domains | default([])) | length > 0
 
     - name: Ensure host gateway docker option for deploy
       become: true
