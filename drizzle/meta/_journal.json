@@ -71,6 +71,13 @@
       "when": 1758649714145,
       "tag": "0009_boring_blockbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1759087272411,
+      "tag": "0010_chief_mandarin",
+      "breakpoints": true
     }
   ]
 }

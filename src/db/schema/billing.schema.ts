@@ -1,4 +1,4 @@
-import { boolean, integer, jsonb, pgTable, text } from 'drizzle-orm/pg-core';
+import { boolean, integer, jsonb, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core';
 import { generateId } from '~/utils/id-generator';
 import { user } from './auth.schema';
 import { createdAt, timestamptz, updatedAt } from './_shared';
@@ -76,20 +76,26 @@ export const creditLedger = pgTable('credit_ledger', {
   createdAt: timestamptz('created_at').notNull().defaultNow(),
 });
 
-export const invoices = pgTable('invoices', {
-  id: text('id')
-    .$defaultFn(() => generateId('invoice'))
-    .primaryKey(),
-  userId: text('user_id')
-    .notNull()
-    .references(() => user.id, { onDelete: 'cascade' }),
-  source: text('source').notNull().default('polar'),
-  externalId: text('external_id').notNull(),
-  number: text('number'),
-  hostedUrl: text('hosted_url'),
-  pdfUrl: text('pdf_url'),
-  amountCents: integer('amount_cents').notNull().default(0),
-  currency: text('currency').notNull().default('USD'),
-  status: text('status').notNull().default('paid'),
-  createdAt: timestamptz('created_at').notNull().defaultNow(),
-});
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: text('id')
+      .$defaultFn(() => generateId('invoice'))
+      .primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    source: text('source').notNull().default('polar'),
+    externalId: text('external_id').notNull(),
+    number: text('number'),
+    hostedUrl: text('hosted_url'),
+    pdfUrl: text('pdf_url'),
+    amountCents: integer('amount_cents').notNull().default(0),
+    currency: text('currency').notNull().default('USD'),
+    status: text('status').notNull().default('paid'),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    externalIdIdx: uniqueIndex('invoices_external_id_idx').on(table.externalId),
+  }),
+);

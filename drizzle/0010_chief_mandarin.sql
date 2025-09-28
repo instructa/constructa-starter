@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "invoices_external_id_idx" ON "invoices" USING btree ("external_id");

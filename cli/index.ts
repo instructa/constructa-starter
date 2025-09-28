@@ -8,6 +8,8 @@ import { blue, cyan, green, red, yellow } from 'ansis';
 import { defineCommand, runMain } from 'citty';
 dotenv.config();
 // Helper function to run commands and log output
+type AttemptResult = { ok: boolean; message?: string };
+
 const runCommand = (command: string, description: string) => {
   console.log(
     blue(`
@@ -24,6 +26,58 @@ Running: ${description} (${command})`)
       console.error(red(`❌ Error running ${description}: An unknown error occurred`));
     }
     process.exit(1); // Exit if any command fails
+  }
+};
+
+const formatExecError = (error: unknown) => {
+  const parts: string[] = [];
+  if (error && typeof error === 'object') {
+    const errObj = error as Record<string, unknown>;
+    if (typeof errObj.message === 'string' && errObj.message.trim().length > 0) {
+      parts.push(errObj.message.trim());
+    }
+    if (typeof errObj.stdout === 'string' && errObj.stdout.trim().length > 0) {
+      parts.push(errObj.stdout.trim());
+    }
+    if (Buffer.isBuffer(errObj.stdout) && errObj.stdout.length > 0) {
+      parts.push(errObj.stdout.toString().trim());
+    }
+    if (typeof errObj.stderr === 'string' && errObj.stderr.trim().length > 0) {
+      parts.push(errObj.stderr.trim());
+    }
+    if (Buffer.isBuffer(errObj.stderr) && errObj.stderr.length > 0) {
+      parts.push(errObj.stderr.toString().trim());
+    }
+  }
+
+  if (parts.length === 0 && error) {
+    parts.push(String(error));
+  }
+
+  return parts.join('\n');
+};
+
+const attemptCommand = (command: string, description: string, allowFailure = false): AttemptResult => {
+  console.log(
+    blue(`
+Running: ${description} (${command})`)
+  );
+
+  try {
+    execSync(command, { stdio: 'inherit' });
+    console.log(green(`✅ Success: ${description}`));
+    return { ok: true };
+  } catch (error: unknown) {
+    const message = formatExecError(error);
+
+    if (allowFailure) {
+      console.log(yellow(`⚠️  ${description} failed: ${message || 'unknown error'}`));
+      return { ok: false, message };
+    }
+
+    console.error(red(`❌ Error running ${description}: ${message}`));
+    process.exit(1);
+    return { ok: false, message };
   }
 };
 
@@ -173,6 +227,8 @@ const clearTunnelEntries = () => {
     writeFileSync(tunnelStatePath(), '[]', 'utf8');
   }
 };
+
+const escapeForDoubleQuotes = (value: string) => value.replace(/(["\\$`])/g, '\\$1');
 
 const TUNNEL_FORWARDS = [
   { name: 'MinIO API', localPort: 9000, remotePort: 9000, url: 'http://localhost:9000' },
@@ -491,6 +547,78 @@ const deployImageCommand = defineCommand({
   },
 });
 
+const restartCommand = defineCommand({
+  meta: {
+    name: 'restart',
+    description: 'Restart the Dokku web app and remote compose worker',
+  },
+  args: {
+    env: {
+      type: 'string',
+      description: 'Target environment: dev or prod',
+      default: 'prod',
+    },
+    composeDir: {
+      type: 'string',
+      description: 'Remote compose directory (defaults to EX0_REMOTE_COMPOSE_DIR or /opt/constructa)',
+    },
+  },
+  async run({ args }) {
+    const { host, app } = resolveDokkuRemote(args.env);
+    const composeDir = args.composeDir || process.env.EX0_REMOTE_COMPOSE_DIR || '/opt/constructa';
+    const escapedDir = escapeForDoubleQuotes(composeDir);
+
+    let restartSucceeded = false;
+
+    const restartDescription = `Restart Dokku app ${app} on ${args.env}`;
+    const restartResult = attemptCommand(
+      `ssh ${host} dokku ps:restart ${app}`,
+      restartDescription,
+      true
+    );
+
+    if (restartResult.ok) {
+      restartSucceeded = true;
+    } else {
+      const appsRestartDescription = `Restart Dokku app ${app} via apps:restart on ${args.env}`;
+      const appsRestartResult = attemptCommand(
+        `ssh ${host} dokku apps:restart ${app}`,
+        appsRestartDescription,
+        true
+      );
+
+      if (appsRestartResult.ok) {
+        restartSucceeded = true;
+      } else {
+        console.log(yellow('ps/apps restart failed; trying ps:stop/ps:start fallback...'));
+
+        attemptCommand(`ssh ${host} dokku ps:stop ${app} || true`, `Stop Dokku app ${app} on ${args.env}`, true);
+        const startResult = attemptCommand(
+          `ssh ${host} dokku ps:start ${app}`,
+          `Start Dokku app ${app} on ${args.env}`,
+          true
+        );
+
+        if (startResult.ok) {
+          restartSucceeded = true;
+        } else {
+          console.error(
+            red(
+              `❌ All Dokku restart strategies failed. Please restart the app manually. Last error:\n${startResult.message || 'unknown error'}`
+            )
+          );
+          process.exit(1);
+        }
+      }
+    }
+
+    runCommand(
+      `ssh ${host} "cd ${escapedDir} && docker compose up -d worker"`,
+      `Restart compose worker in ${composeDir}`
+    );
+  },
+});
+
 const logsCommand = defineCommand({
   meta: {
     name: 'logs',
@@ -725,6 +853,7 @@ const main = defineCommand({
     testdata: testdataCommand,
     deploy: deployCommand,
     'deploy-image': deployImageCommand,
+    restart: restartCommand,
     logs: logsCommand,
     tunnel: tunnelCommand,
     services: servicesCommand,
