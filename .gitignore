@@ -99,3 +99,4 @@ infra/hetzner/terraform.tfstate.*
 # Ansible secret overrides
 infra/ansible/group_vars/constructa/vars.yml
 # END Ruler Generated Files
+.ex0
