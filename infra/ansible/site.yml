@@ -26,6 +26,75 @@
         group: "{{ ansible_user | default('deploy') }}"
         mode: "0755"
 
+    - name: Check for active swap
+      become: true
+      command: swapon --show --noheadings --output=NAME
+      register: constructa_swap_status
+      changed_when: false
+      failed_when: false
+      when: constructa_swap_file is defined
+
+    - name: Determine swap activation state
+      set_fact:
+        constructa_swap_active: "{{ constructa_swap_file in (constructa_swap_status.stdout_lines | default([])) }}"
+      when: constructa_swap_file is defined
+
+    - name: Create swapfile when needed
+      become: true
+      command: fallocate -l {{ constructa_swap_size }} {{ constructa_swap_file }}
+      args:
+        creates: "{{ constructa_swap_file }}"
+      when:
+        - constructa_swap_file is defined
+        - constructa_swap_size is defined
+        - not (constructa_swap_active | default(false))
+
+    - name: Stat swapfile
+      become: true
+      stat:
+        path: "{{ constructa_swap_file }}"
+      register: constructa_swap_stat
+      when: constructa_swap_file is defined
+
+    - name: Ensure swapfile permissions
+      become: true
+      file:
+        path: "{{ constructa_swap_file }}"
+        owner: root
+        group: root
+        mode: '0600'
+      when:
+        - constructa_swap_file is defined
+        - constructa_swap_stat.stat.exists | default(false)
+
+    - name: Initialize swapfile
+      become: true
+      command: mkswap {{ constructa_swap_file }}
+      when:
+        - constructa_swap_file is defined
+        - constructa_swap_stat.stat.exists | default(false)
+        - not (constructa_swap_active | default(false))
+
+    - name: Ensure swapfile entry in fstab
+      become: true
+      lineinfile:
+        path: /etc/fstab
+        regexp: '^{{ constructa_swap_file | regex_escape() }}\\s'
+        line: '{{ constructa_swap_file }} none swap sw 0 0'
+        create: true
+      when: constructa_swap_file is defined
+
+    - name: Activate swapfile
+      become: true
+      command: swapon {{ constructa_swap_file }}
+      register: constructa_swapon_cmd
+      changed_when: not (constructa_swap_active | default(false)) and constructa_swapon_cmd.rc == 0
+      failed_when: (constructa_swap_active | default(false)) == false and constructa_swapon_cmd.rc != 0
+      when:
+        - constructa_swap_file is defined
+        - constructa_swap_stat.stat.exists | default(false)
+        - not (constructa_swap_active | default(false))
+
   tasks:
     - name: Sync compose bundle
       ansible.posix.synchronize:

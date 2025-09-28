@@ -54,6 +54,8 @@ constructa_docker_gc_schedule: weekly # or 'daily', or a full OnCalendar expr
 constructa_docker_gc_prune_age: 720h # only prune artifacts unused for this long
 constructa_docker_allowed_cidr: '172.17.0.0/16'
 constructa_run_compose_migrate: false
+constructa_swap_file: /swapfile
+constructa_swap_size: 2G
 
 # Dokku config key/values that point the app at the loopback services.
 # DATABASE_URL should match constructa_compose_env but use host.docker.internal.

@@ -43,6 +43,7 @@ COPY --from=builder /app/drizzle ./drizzle
 # Include source for the worker (runs via tsx in production)
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 
 # Non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001

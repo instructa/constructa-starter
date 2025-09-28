@@ -50,6 +50,7 @@ What the playbook does:
 * starts Postgres/MinIO/Redis/Meilisearch + worker via compose
 * runs bucket provisioning + `pnpm run db:migrate`
 * ensures the Dokku app exists and points to `host.docker.internal`
+* provisions a swap file (`constructa_swap_file` / `constructa_swap_size`) so Docker builds have enough memory
 * if you are using Dokku-first, sets `HOST_BIND_ADDR=0.0.0.0` so Dokku
   containers can reach the compose services via the host gateway
 
