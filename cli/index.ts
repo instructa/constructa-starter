@@ -491,6 +491,41 @@ const deployImageCommand = defineCommand({
   },
 });
 
+const logsCommand = defineCommand({
+  meta: {
+    name: 'logs',
+    description: 'Stream Dokku logs for the app',
+  },
+  args: {
+    env: {
+      type: 'string',
+      description: 'Target environment: dev or prod',
+      default: 'prod',
+    },
+    worker: {
+      type: 'boolean',
+      description: 'If true, stream worker logs instead of web logs',
+      default: false,
+    },
+    tail: {
+      type: 'number',
+      description: 'Show the last N lines before streaming',
+      default: 50,
+    },
+  },
+  async run({ args }) {
+    const { host, app } = resolveDokkuRemote(args.env);
+    const processType = args.worker ? ':worker' : '';
+    const processName = args.worker ? 'worker' : 'web';
+    const numFlag = args.tail ? `--num ${args.tail}` : '';
+    const remoteArgs = ['logs', app, '--ps', processName, numFlag, '-t']
+      .filter(Boolean)
+      .join(' ');
+    const baseCmd = `ssh ${host} ${remoteArgs}`;
+    runCommand(baseCmd, `Stream ${args.worker ? 'worker' : 'web'} logs from ${args.env}`);
+  },
+});
+
 const tunnelUpCommand = defineCommand({
   meta: {
     name: 'up',
@@ -690,6 +725,7 @@ const main = defineCommand({
     testdata: testdataCommand,
     deploy: deployCommand,
     'deploy-image': deployImageCommand,
+    logs: logsCommand,
     tunnel: tunnelCommand,
     services: servicesCommand,
   },
