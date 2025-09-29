@@ -16,6 +16,7 @@
     "test": "vitest",
     "test:auth": "vitest tests/auth-integration.test.ts",
     "test:auth:watch": "vitest tests/auth-integration.test.ts --watch",
+    "test:e2e": "vitest tests/e2e-auth-billing.test.ts",
     "db:pull": "npx drizzle-kit pull",
     "db:generate": "npx drizzle-kit generate",
     "db:migrate": "npx drizzle-kit migrate",
