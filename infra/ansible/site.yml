@@ -109,6 +109,8 @@
 
   tasks:
     - name: Sync compose bundle (excluding .env; rendered from Vault below)
+      become: true
+      become_user: root
       ansible.posix.synchronize:
         src: "{{ playbook_dir }}/../deploy/"
         dest: "{{ constructa_deploy_dir }}/"

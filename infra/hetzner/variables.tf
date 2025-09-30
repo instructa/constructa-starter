@@ -52,3 +52,9 @@ variable "deploy_username" {
   type        = string
   default     = "deploy"
 }
+
+variable "deploy_password_hash" {
+  description = "SHA-512 password hash for the deploy user (used to prime sudo password)."
+  type        = string
+  sensitive   = true
+}

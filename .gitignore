@@ -101,3 +101,8 @@ infra/ansible/group_vars/constructa/vars.yml
 .vault-pass.txt
 # END Ruler Generated Files
 .ex0
+
+# Terraform state files anywhere in the repo
+*.tfstate
+*.tfstate.*
+*.tfstate.backup

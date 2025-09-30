@@ -9,6 +9,12 @@ users:
     ssh_authorized_keys:
       - ${deploy_ssh_pubkey}
 
+chpasswd:
+  expire: false
+  encrypted: true
+  list: |
+    ${deploy_username}:${deploy_password_hash}
+
 package_update: true
 package_upgrade: true
 packages:

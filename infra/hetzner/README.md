@@ -13,6 +13,8 @@ export TF_VAR_hcloud_token=your-token
 # export TF_VAR_ssh_public_key_path=~/.ssh/id_ed25519.pub
 # required: restrict SSH to your IP/CIDR
 export TF_VAR_allowed_ssh_cidr="203.0.113.42/32"
+# required: set the deploy sudo password hash (SHA-512)
+export TF_VAR_deploy_password_hash="$(python3 -c "import crypt, getpass; pwd=getpass.getpass('deploy password: '); print(crypt.crypt(pwd, crypt.mksalt(crypt.METHOD_SHA512)))")"
 
 terraform init
 terraform apply
@@ -21,7 +23,7 @@ terraform apply
 This provisions a Debian 13 server with:
 
 * **Docker Engine** (incl. buildx + compose plugin)
-* Non-root `${deploy_username}` user (limited sudo; not in `docker` group)
+* Non-root `${deploy_username}` user with a primed sudo password (not in `docker` group)
 * UFW hardened (SSH from your CIDR only; **80/443** open)
 * Fail2ban enabled with an sshd jail
 
