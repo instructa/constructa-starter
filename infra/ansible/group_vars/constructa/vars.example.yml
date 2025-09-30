@@ -19,8 +19,10 @@ constructa_registry_username: 'your-ghcr-username'
 constructa_registry_password: 'ghp_...'
 
 constructa_redirect_plugin_repo: 'https://github.com/dokku/dokku-redirect.git'
+constructa_redirect_plugin_version: '0.9.1'
 # lets encrypt
 constructa_letsencrypt_plugin_repo: 'https://github.com/dokku/dokku-letsencrypt.git'
+constructa_letsencrypt_plugin_version: '0.22.0'
 constructa_letsencrypt_email: ''
 
 
@@ -35,8 +37,8 @@ constructa_compose_env:
   APP_TAG: 'latest'
 
   # Compose exposes services to the host on this address. Dokku apps reach
-  # them through host.docker.internal, so bind to 0.0.0.0 on the VPS.
-  HOST_BIND_ADDR: '0.0.0.0'
+  # them through host.docker.internal, so we keep them bound to 127.0.0.1 on the VPS.
+  HOST_BIND_ADDR: '127.0.0.1'
   APP_HOSTNAME: 'app.example.com'
   ACME_EMAIL: 'admin@example.com'
 
@@ -49,8 +51,9 @@ constructa_compose_env:
   MINIO_ROOT_USER: 'minioadmin'
   MINIO_ROOT_PASSWORD: 'minioadmin'
   MINIO_BUCKET: 'constructa-files'
+  REDIS_PASSWORD: 'change-me-redis-password'
+  REDIS_URL: 'redis://:change-me-redis-password@127.0.0.1:6379'
   MEILI_MASTER_KEY: 'changeme-master-key'
-  REDIS_URL: 'redis://127.0.0.1:6379'
   MEILI_HOST: 'http://127.0.0.1:7700'
   MEILI_API_KEY: 'changeme-master-key'
   S3_ENDPOINT: 'http://127.0.0.1:9000'
@@ -78,7 +81,7 @@ constructa_compose_env:
   CHECKOUT_CANCEL_URL: 'https://app.example.com/dashboard/billing'
   EMAIL_PROVIDER: 'smtp'
   EMAIL_FROM: 'noreply@example.org'
-  SMTP_HOST: 'smtp.sendgrid.net'
+  SMTP_HOST: 'smtp.example.net'
   SMTP_PORT: '587'
   SMTP_SECURE: 'false'
   SMTP_USER: 'apikey'
@@ -106,7 +109,7 @@ constructa_swap_size: 2G
 constructa_dokku_config:
   NODE_ENV: production
   PORT: '5000'
-  DOKKU_PROXY_PORT_MAP: 'http:80:5000'
+  DOKKU_PROXY_PORT_MAP: 'http:80:5000 https:443:5000'
   DATABASE_URL: 'postgresql://ex0:change-me@host.docker.internal:5432/ex0'
   S3_ENDPOINT: 'http://host.docker.internal:9000'
   S3_REGION: 'us-east-1'
@@ -117,7 +120,7 @@ constructa_dokku_config:
   S3_PREVIEW_URL_EXPIRE_IN: '7200'
   MEILI_HOST: 'http://host.docker.internal:7700'
   MEILI_API_KEY: 'changeme-master-key'
-  REDIS_URL: 'redis://host.docker.internal:6379'
+  REDIS_URL: 'redis://:change-me-redis-password@host.docker.internal:6379'
   SEARCH_REINDEX_ON_BOOT: 'false'
   BULLMQ_PREFIX: 'constructa'
   DAILY_CREDIT_REFILL_CRON: '0 3 * * *'

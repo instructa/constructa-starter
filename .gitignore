@@ -98,5 +98,6 @@ infra/hetzner/terraform.tfstate.*
 /src/server/function/CLAUDE.md.bak
 # Ansible secret overrides
 infra/ansible/group_vars/constructa/vars.yml
+.vault-pass.txt
 # END Ruler Generated Files
 .ex0

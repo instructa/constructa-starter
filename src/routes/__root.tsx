@@ -96,6 +96,12 @@ function RootComponent() {
 function RootDocument({ children }: { children: React.ReactNode }) {
   const initial = Route.useLoaderData() as Theme;
   const router = useRouter();
+  const hasGithub = !!import.meta.env.VITE_GITHUB_CLIENT_ID;
+  const hasGoogle = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const socialProviders = [
+    ...(hasGithub ? ['github'] : []),
+    ...(hasGoogle ? ['google'] : []),
+  ];
 
   return (
     <html lang="en" className={initial === 'system' ? '' : initial}>
@@ -110,9 +116,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             <AuthUIProviderTanstack
               authClient={authClient}
               redirectTo="/dashboard"
-              navigate={(href) => router.navigate({ href })}
-              replace={(href) => router.navigate({ href, replace: true })}
+              navigate={(to) => router.navigate({ to })}
+              replace={(to) => router.navigate({ to, replace: true })}
               Link={({ href, ...props }) => <Link to={href} {...props} />}
+              social={
+                socialProviders.length > 0
+                  ? { providers: socialProviders }
+                  : undefined
+              }
             >
               <div className="flex min-h-svh flex-col">{children}</div>
               <Toaster />

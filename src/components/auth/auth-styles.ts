@@ -67,6 +67,8 @@ export const authLocalizationOverrides: Partial<AuthLocalization> = {
   TERMS_OF_SERVICE: 'Terms of Service',
   PRIVACY_POLICY: 'Privacy Policy',
   REQUEST_FAILED: 'An error occurred. Please try again.',
+  OR_CONTINUE_WITH: 'Or continue with',
+  SIGN_IN_WITH: 'Continue with',
 };
 
 // Container styling for auth pages
