@@ -1,153 +1,88 @@
-# Copy this file to infra/ansible/group_vars/constructa/vars.yml and
-# fill in values before running the playbook. Keep the populated
-# file out of version control.
+# Copy this file to infra/ansible/group_vars/constructa/vars.yml and **encrypt it with Ansible Vault**:
+#   ansible-vault encrypt infra/ansible/group_vars/constructa/vars.yml
+#
+# Manage it via the CLI:
+#   pnpm run ex0 -- vault edit
+#
+# The playbook will render /opt/constructa/.env from this map.
 
-# Set to true only on the very first run when no app image exists yet.
-# After the first Dokku deploy (which builds dokku/constructa:latest), set back to false.
-constructa_enable_registry_login: false
-
-constructa_app_name: constructa
-constructa_domain: app.example.com
-# Optional list of domains that should 301 redirect to constructa_domain.
-# Example: ['www.app.example.com']
-constructa_redirect_domains: []
 constructa_deploy_dir: /opt/constructa
 
+# Sudo password for the deploy user (store encrypted via Vault)
+constructa_deploy_sudo_passwort: 'change-me-deploy-password'
+
+# Make Ansible escalate with the password above
+ansible_become: true
+ansible_become_method: sudo
+ansible_become_password: "{{ constructa_deploy_sudo_passwort }}"
+
+# Optional: login to image registry before pulling
 constructa_enable_registry_login: false
 constructa_registry_server: ghcr.io
 constructa_registry_username: 'your-ghcr-username'
 constructa_registry_password: 'ghp_...'
 
-constructa_redirect_plugin_repo: 'https://github.com/dokku/dokku-redirect.git'
-constructa_redirect_plugin_version: '0.9.1'
-# lets encrypt
-constructa_letsencrypt_plugin_repo: 'https://github.com/dokku/dokku-letsencrypt.git'
-constructa_letsencrypt_plugin_version: '0.22.0'
-constructa_letsencrypt_email: ''
-
-
-# Values rendered into /opt/constructa/.env for the compose stack.
-# Strings are quoted to preserve literal values.
-constructa_compose_env:
-  # For "Dokku-first": set after the first dokku deploy:
-  #   APP_IMAGE="dokku/constructa"  APP_TAG="latest"
-  # For registry pull (e.g., GHCR):
-  #   APP_IMAGE="ghcr.io/your-org/your-repo/app"  APP_TAG="sha-or-tag"
-  APP_IMAGE: 'ghcr.io/your-org/your-repo/app'
-  APP_TAG: 'latest'
-
-  # Compose exposes services to the host on this address. Dokku apps reach
-  # them through host.docker.internal, so we keep them bound to 127.0.0.1 on the VPS.
-  HOST_BIND_ADDR: '127.0.0.1'
-  APP_HOSTNAME: 'app.example.com'
-  ACME_EMAIL: 'admin@example.com'
-
-  POSTGRES_USER: 'ex0'
-  POSTGRES_PASSWORD: 'change-me'
-  POSTGRES_DB: 'ex0'
-  BETTER_AUTH_SECRET: 'please-change-me'
-  BETTER_AUTH_URL: 'https://app.example.com'
-  OPENAI_API_KEY: 'sk-...'
-  MINIO_ROOT_USER: 'minioadmin'
-  MINIO_ROOT_PASSWORD: 'minioadmin'
-  MINIO_BUCKET: 'constructa-files'
-  REDIS_PASSWORD: 'change-me-redis-password'
-  REDIS_URL: 'redis://:change-me-redis-password@127.0.0.1:6379'
-  MEILI_MASTER_KEY: 'changeme-master-key'
-  MEILI_HOST: 'http://127.0.0.1:7700'
-  MEILI_API_KEY: 'changeme-master-key'
-  S3_ENDPOINT: 'http://127.0.0.1:9000'
-  S3_REGION: 'us-east-1'
-  S3_ACCESS_KEY_ID: 'minioadmin'
-  S3_SECRET_ACCESS_KEY: 'minioadmin'
-  S3_BUCKET: 'constructa-files'
-  S3_ENABLE_PATH_STYLE: '1'
-  S3_PREVIEW_URL_EXPIRE_IN: '7200'
-  SEARCH_REINDEX_ON_BOOT: 'false'
-  BULLMQ_PREFIX: 'constructa'
-  DAILY_CREDIT_REFILL_CRON: '0 3 * * *'
-  JOB_DAILY_CREDIT_REFILL_URL: 'http://app:3000/api/jobs/daily-credit-refill'
-  JOBS_SECRET: 'change-me'
-  ENABLE_EMAIL_VERIFICATION: 'true'
-  VITE_ENABLE_EMAIL_VERIFICATION: 'true'
-  VITE_ENTERPRISE_DEMO_URL: 'https://calendly.com/your-team/demo'
-  VITE_POLAR_PRODUCT_PRO_MONTHLY: ''
-  VITE_POLAR_PRODUCT_BUSINESS_MONTHLY: ''
-  VITE_POLAR_PRODUCT_CREDITS_50: ''
-  VITE_POLAR_PRODUCT_CREDITS_100: ''
-  VITE_BASE_URL: 'https://app.example.com'
-  PUBLIC_URL: 'https://app.example.com'
-  CHECKOUT_SUCCESS_URL: 'https://app.example.com/dashboard/billing/success'
-  CHECKOUT_CANCEL_URL: 'https://app.example.com/dashboard/billing'
-  EMAIL_PROVIDER: 'smtp'
-  EMAIL_FROM: 'noreply@example.org'
-  SMTP_HOST: 'smtp.example.net'
-  SMTP_PORT: '587'
-  SMTP_SECURE: 'false'
-  SMTP_USER: 'apikey'
-  SMTP_PASS: 'change-me-sendgrid-api-key'
-  POLAR_SERVER: 'production'  # or 'sandbox'
-  POLAR_ACCESS_TOKEN: ''
-  POLAR_WEBHOOK_SECRET: ''
-  POLAR_ORGANIZATION_ID: ''
-  POLAR_PRODUCT_PRO_MONTHLY: ''
-  POLAR_PRODUCT_BUSINESS_MONTHLY: ''
-  POLAR_PRODUCT_CREDITS_50: ''
-  POLAR_PRODUCT_CREDITS_100: ''
-  DATABASE_URL: 'postgresql://ex0:change-me@127.0.0.1:5432/ex0'
-
+# Optional Docker GC
 constructa_enable_docker_gc: false
-constructa_docker_gc_schedule: weekly # or 'daily', or a full OnCalendar expr
-constructa_docker_gc_prune_age: 720h # only prune artifacts unused for this long
-constructa_docker_allowed_cidr: '172.17.0.0/16'
-constructa_run_compose_migrate: false
+constructa_docker_gc_schedule: weekly
+constructa_docker_gc_prune_age: 720h
+
+# Optional swap on small VPS
 constructa_swap_file: /swapfile
 constructa_swap_size: 2G
 
-# Dokku config key/values that point the app at the loopback services.
-# DATABASE_URL should match constructa_compose_env but use host.docker.internal.
-constructa_dokku_config:
-  NODE_ENV: production
-  PORT: '5000'
-  DOKKU_PROXY_PORT_MAP: 'http:80:5000 https:443:5000'
-  DATABASE_URL: 'postgresql://ex0:change-me@host.docker.internal:5432/ex0'
-  S3_ENDPOINT: 'http://host.docker.internal:9000'
+# Application environment (rendered into .env). Example values shown; replace with real ones.
+# TIP: Keep this file Vault-encrypted.
+constructa_env:
+  # Image + tag used by compose
+  APP_IMAGE: 'ghcr.io/your-org/your-repo/app'
+  APP_TAG: 'latest'
+
+  # Domain + certificates (Caddy)
+  APP_HOSTNAME: 'app.example.com'
+  ACME_EMAIL: 'admin@example.com'
+
+  # Postgres (internal)
+  POSTGRES_USER: 'user'
+  POSTGRES_PASSWORD: 'password'
+  POSTGRES_DB: 'ex0'
+  DATABASE_URL: 'postgresql://user:password@db:5432/ex0'
+
+  # MinIO/S3
+  MINIO_ROOT_USER: 'minioadmin'
+  MINIO_ROOT_PASSWORD: 'minioadmin'
+  MINIO_BUCKET: 'constructa-files'
   S3_REGION: 'us-east-1'
-  S3_ACCESS_KEY_ID: 'minioadmin'
-  S3_SECRET_ACCESS_KEY: 'minioadmin'
-  S3_BUCKET: 'constructa-files'
+  S3_ACCESS_KEY_ID: '${MINIO_ROOT_USER}'
+  S3_SECRET_ACCESS_KEY: '${MINIO_ROOT_PASSWORD}'
+  S3_BUCKET: '${MINIO_BUCKET}'
   S3_ENABLE_PATH_STYLE: '1'
   S3_PREVIEW_URL_EXPIRE_IN: '7200'
-  MEILI_HOST: 'http://host.docker.internal:7700'
-  MEILI_API_KEY: 'changeme-master-key'
-  REDIS_URL: 'redis://:change-me-redis-password@host.docker.internal:6379'
-  SEARCH_REINDEX_ON_BOOT: 'false'
+
+  # Redis / BullMQ
+  REDIS_PASSWORD: 'change-me-redis-password'
+  REDIS_URL: 'redis://:${REDIS_PASSWORD}@redis:6379'
   BULLMQ_PREFIX: 'constructa'
   DAILY_CREDIT_REFILL_CRON: '0 3 * * *'
   JOB_DAILY_CREDIT_REFILL_URL: 'http://app:3000/api/jobs/daily-credit-refill'
-  JOBS_SECRET: 'change-me'
-  ENABLE_EMAIL_VERIFICATION: 'true'
-  VITE_ENABLE_EMAIL_VERIFICATION: 'true'
-  VITE_ENTERPRISE_DEMO_URL: 'https://calendly.com/your-team/demo'
-  VITE_POLAR_PRODUCT_PRO_MONTHLY: ''
-  VITE_POLAR_PRODUCT_BUSINESS_MONTHLY: ''
-  VITE_POLAR_PRODUCT_CREDITS_50: ''
-  VITE_POLAR_PRODUCT_CREDITS_100: ''
-  VITE_BASE_URL: 'https://app.example.com'
-  BETTER_AUTH_SECRET: 'please-change-me'
-  BETTER_AUTH_URL: 'https://app.example.com'
-  OPENAI_API_KEY: 'sk-...'
-  PUBLIC_URL: 'https://app.example.com'
-  CHECKOUT_SUCCESS_URL: 'https://app.example.com/dashboard/billing/success'
-  CHECKOUT_CANCEL_URL: 'https://app.example.com/dashboard/billing'
-  EMAIL_PROVIDER: 'smtp'
+  JOBS_SECRET: ''
+
+  # Search (Meilisearch)
+  MEILI_MASTER_KEY: 'changeme-master-key'
+  MEILI_HOST: 'http://meilisearch:7700'
+  MEILI_API_KEY: '${MEILI_MASTER_KEY}'
+  SEARCH_REINDEX_ON_BOOT: 'false'
+
+  # Auth / Email / Third-parties
+  BETTER_AUTH_SECRET: 'your-secret-key-here'
+  BETTER_AUTH_URL: 'https://${APP_HOSTNAME}'
+
+  EMAIL_PROVIDER: 'smtp' # "smtp" | "resend" | "console"
   EMAIL_FROM: 'noreply@example.org'
-  SMTP_HOST: 'smtp.sendgrid.net'
-  SMTP_PORT: '587'
-  SMTP_SECURE: 'false'
-  SMTP_USER: 'apikey'
-  SMTP_PASS: 'change-me-sendgrid-api-key'
-  POLAR_SERVER: 'production'  # or 'sandbox'
+  RESEND_API_KEY: ''
+
+  OPENAI_API_KEY: ''
+  POLAR_SERVER: 'production' # or "sandbox"
   POLAR_ACCESS_TOKEN: ''
   POLAR_WEBHOOK_SECRET: ''
   POLAR_ORGANIZATION_ID: ''

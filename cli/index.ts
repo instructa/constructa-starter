@@ -1,772 +1,560 @@
-import dotenv from 'dotenv';
-import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
-import { spawnSync } from 'node:child_process';
-import * as p from '@clack/prompts';
-import { blue, cyan, green, red, yellow } from 'ansis';
-import { defineCommand, runMain } from 'citty';
-dotenv.config();
-// Helper function to run commands and log output
-type AttemptResult = { ok: boolean; message?: string };
+import dotenv from 'dotenv'
+import { execSync, spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { basename, join } from 'node:path'
+import * as p from '@clack/prompts'
+import { blue, cyan, green, red, yellow } from 'ansis'
+import { defineCommand, runMain } from 'citty'
+
+dotenv.config()
+
+type AttemptResult = { ok: boolean; message?: string }
 
 const runCommand = (command: string, description: string) => {
-  console.log(
-    blue(`
-Running: ${description} (${command})`)
-  );
+  console.log(blue(`\nRunning: ${description} (${command})`))
   try {
-    execSync(command, { stdio: 'inherit' });
-    console.log(green(`✅ Success: ${description}`));
+    execSync(command, { stdio: 'inherit' })
+    console.log(green(`✅ Success: ${description}`))
   } catch (error: unknown) {
-    // Type guard to check if error is an instance of Error
-    if (error instanceof Error) {
-      console.error(red(`❌ Error running ${description}: ${error.message}`));
-    } else {
-      console.error(red(`❌ Error running ${description}: An unknown error occurred`));
-    }
-    process.exit(1); // Exit if any command fails
+    const msg = formatExecError(error)
+    console.error(red(`❌ Error running ${description}: ${msg}`))
+    process.exit(1)
   }
-};
+}
 
 const formatExecError = (error: unknown) => {
-  const parts: string[] = [];
+  const parts: string[] = []
   if (error && typeof error === 'object') {
-    const errObj = error as Record<string, unknown>;
-    if (typeof errObj.message === 'string' && errObj.message.trim().length > 0) {
-      parts.push(errObj.message.trim());
-    }
-    if (typeof errObj.stdout === 'string' && errObj.stdout.trim().length > 0) {
-      parts.push(errObj.stdout.trim());
-    }
-    if (Buffer.isBuffer(errObj.stdout) && errObj.stdout.length > 0) {
-      parts.push(errObj.stdout.toString().trim());
-    }
-    if (typeof errObj.stderr === 'string' && errObj.stderr.trim().length > 0) {
-      parts.push(errObj.stderr.trim());
-    }
-    if (Buffer.isBuffer(errObj.stderr) && errObj.stderr.length > 0) {
-      parts.push(errObj.stderr.toString().trim());
-    }
+    const errObj = error as Record<string, unknown>
+    if (typeof errObj.message === 'string' && errObj.message.trim().length > 0) parts.push(errObj.message.trim())
+    if (typeof errObj.stdout === 'string' && errObj.stdout.trim().length > 0) parts.push(errObj.stdout.trim())
+    if (Buffer.isBuffer(errObj.stdout) && errObj.stdout.length > 0) parts.push(errObj.stdout.toString().trim())
+    if (typeof errObj.stderr === 'string' && errObj.stderr.trim().length > 0) parts.push(errObj.stderr.trim())
+    if (Buffer.isBuffer(errObj.stderr) && errObj.stderr.length > 0) parts.push(errObj.stderr.toString().trim())
   }
-
-  if (parts.length === 0 && error) {
-    parts.push(String(error));
-  }
-
-  return parts.join('\n');
-};
+  if (parts.length === 0 && error) parts.push(String(error))
+  return parts.join('\n')
+}
 
 const attemptCommand = (command: string, description: string, allowFailure = false): AttemptResult => {
-  console.log(
-    blue(`
-Running: ${description} (${command})`)
-  );
-
+  console.log(blue(`\nRunning: ${description} (${command})`))
   try {
-    execSync(command, { stdio: 'inherit' });
-    console.log(green(`✅ Success: ${description}`));
-    return { ok: true };
+    execSync(command, { stdio: 'inherit' })
+    console.log(green(`✅ Success: ${description}`))
+    return { ok: true }
   } catch (error: unknown) {
-    const message = formatExecError(error);
-
+    const message = formatExecError(error)
     if (allowFailure) {
-      console.log(yellow(`⚠️  ${description} failed: ${message || 'unknown error'}`));
-      return { ok: false, message };
+      console.log(yellow(`⚠️  ${description} failed: ${message || 'unknown error'}`))
+      return { ok: false, message }
     }
-
-    console.error(red(`❌ Error running ${description}: ${message}`));
-    process.exit(1);
-    return { ok: false, message };
+    console.error(red(`❌ Error running ${description}: ${message}`))
+    process.exit(1)
+    return { ok: false, message }
   }
-};
+}
 
-// Helper function to check if Docker is installed and running
 const checkDocker = () => {
-  console.log(blue('Checking Docker status...'));
+  console.log(blue('Checking Docker status...'))
   try {
-    execSync('docker --version', { stdio: 'pipe' }); // Check if docker command exists
+    execSync('docker --version', { stdio: 'pipe' })
   } catch (error) {
-    console.error(red('❌ Error: Docker command not found. Please install Docker.'), error);
-    process.exit(1);
+    console.error(red('❌ Error: Docker command not found. Please install Docker.'), error)
+    process.exit(1)
   }
   try {
-    execSync('docker info', { stdio: 'pipe' }); // Check if docker daemon is running
-    console.log(green('✅ Docker is installed and running.'));
+    execSync('docker info', { stdio: 'pipe' })
+    console.log(green('✅ Docker is installed and running.'))
   } catch (error) {
-    console.error(red('❌ Error: Docker daemon is not running. Please start Docker.'), error);
-    process.exit(1);
+    console.error(red('❌ Error: Docker daemon is not running. Please start Docker.'), error)
+    process.exit(1)
   }
-};
+}
 
-type DokkuRemoteDetails = {
-  remoteName: string;
-  host: string;
-  app: string;
-};
-
-const resolveDokkuRemote = (env: string): DokkuRemoteDetails => {
-  const desired = env === 'dev' ? 'dokku-dev' : 'dokku-prod';
-  const fallback = 'dokku';
-
-  let remoteName: string | null = null;
-  try {
-    const remotes = execSync('git remote', { stdio: 'pipe' })
-      .toString()
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    remoteName = remotes.includes(desired)
-      ? desired
-      : remotes.includes(fallback)
-        ? fallback
-        : null;
-  } catch {
-    // ignore and handle below
-  }
-
-  if (!remoteName) {
-    console.error(
-      red(
-        `❌ No Dokku remote found. Add one with:\n\n` +
-          `dokku@your.server:constructa -> git remote add dokku-prod dokku@your.server:constructa\n` +
-          `optional dev -> git remote add dokku-dev dokku@your.dev.server:constructa`
-      )
-    );
-    process.exit(1);
-  }
-
-  const remoteUrl = execSync(`git remote get-url ${remoteName}`, { stdio: 'pipe' })
-    .toString()
-    .trim();
-
-  if (!remoteUrl) {
-    console.error(red(`❌ Could not read remote URL for ${remoteName}`));
-    process.exit(1);
-  }
-
-  let host = '';
-  let app = '';
-
-  if (remoteUrl.startsWith('ssh://')) {
-    const parsed = new URL(remoteUrl);
-    const username = parsed.username ? `${parsed.username}@` : '';
-    const port = parsed.port ? `:${parsed.port}` : '';
-    host = `${username}${parsed.hostname}${port}`;
-    app = parsed.pathname.replace(/^\/+/, '');
-  } else {
-    const lastColon = remoteUrl.lastIndexOf(':');
-    if (lastColon === -1) {
-      console.error(red(`❌ Unexpected Dokku remote URL format: ${remoteUrl}`));
-      process.exit(1);
-    }
-    host = remoteUrl.slice(0, lastColon);
-    app = remoteUrl.slice(lastColon + 1).replace(/^\/+/, '');
-  }
-
-  if (!host || !app) {
-    console.error(red(`❌ Unable to parse Dokku host/app from remote URL: ${remoteUrl}`));
-    process.exit(1);
-  }
-
-  return { remoteName, host, app };
-};
-
-const parseHostParts = (host: string) => {
-  let username = '';
-  let hostname = host;
-  let port: string | undefined;
-
-  if (host.includes('@')) {
-    const [user, rest] = host.split('@');
-    username = user;
-    hostname = rest;
-  }
-
-  if (hostname.includes(':')) {
-    const [name, portStr] = hostname.split(':');
-    hostname = name;
-    port = portStr;
-  }
-
-  return { username, hostname, port };
-};
-
-type TunnelEntry = {
-  command: string;
-};
+type Remote = { host: string; user: string }
+const resolveRemote = (env: 'dev' | 'prod'): Remote => {
+  const invPath = 'infra/ansible/inventory/hosts.ini'
+  const inv = readFileSync(invPath, 'utf8')
+  const name = `ex0-${env}`
+  const line = inv
+    .split('\n')
+    .map((l) => l.trim())
+    .find((l) => l.startsWith(name))
+  if (!line) throw new Error(`No inventory entry for ${name} in ${invPath}`)
+  const host = /ansible_host=([^\s]+)/.exec(line)?.[1]
+  const user = /ansible_user=([^\s]+)/.exec(line)?.[1] || 'deploy'
+  if (!host) throw new Error(`Missing ansible_host for ${name}`)
+  return { host, user }
+}
 
 const getDataDir = () => {
-  const dir = join(process.cwd(), '.ex0');
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-  return dir;
-};
-
-const tunnelStatePath = () => join(getDataDir(), 'tunnels.json');
-
-const readTunnelEntries = (): TunnelEntry[] => {
-  const path = tunnelStatePath();
-  if (!existsSync(path)) {
-    return [];
-  }
-  try {
-    return JSON.parse(readFileSync(path, 'utf8')) as TunnelEntry[];
-  } catch {
-    return [];
-  }
-};
-
-const writeTunnelEntries = (entries: TunnelEntry[]) => {
-  writeFileSync(tunnelStatePath(), JSON.stringify(entries, null, 2), 'utf8');
-};
-
+  const dir = join(process.cwd(), '.ex0')
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  return dir
+}
+type TunnelEntry = { command: string }
+const tunnelStatePath = () => join(getDataDir(), 'tunnels.json')
+const readTunnelEntries = (): TunnelEntry[] =>
+  existsSync(tunnelStatePath()) ? (JSON.parse(readFileSync(tunnelStatePath(), 'utf8')) as TunnelEntry[]) : []
+const writeTunnelEntries = (entries: TunnelEntry[]) =>
+  writeFileSync(tunnelStatePath(), JSON.stringify(entries, null, 2), 'utf8')
 const clearTunnelEntries = () => {
-  if (existsSync(tunnelStatePath())) {
-    writeFileSync(tunnelStatePath(), '[]', 'utf8');
-  }
-};
-
-const escapeForDoubleQuotes = (value: string) => value.replace(/(["\\$`])/g, '\\$1');
+  if (existsSync(tunnelStatePath())) writeFileSync(tunnelStatePath(), '[]', 'utf8')
+}
 
 const TUNNEL_FORWARDS = [
   { name: 'MinIO API', localPort: 9000, remotePort: 9000, url: 'http://localhost:9000' },
-  { name: 'MinIO Console', localPort: 9001, remotePort: 9001, url: 'http://localhost:9001' },
-  { name: 'Mailhog UI', localPort: 8025, remotePort: 8025, url: 'http://localhost:8025' },
-];
+  { name: 'MinIO Console', localPort: 9001, remotePort: 9001, url: 'http://localhost:9001' }
+]
 
+// ---------- helpers ----------
+const readFileIfExists = (path: string) => (existsSync(path) ? readFileSync(path, 'utf8') : '')
+const detectAppImage = (): string => {
+  if (process.env.APP_IMAGE && process.env.APP_IMAGE.trim().length > 0) return process.env.APP_IMAGE.trim()
+  // try infra/deploy/.env then .env.sample
+  for (const candidate of ['infra/deploy/.env', 'infra/deploy/.env.sample']) {
+    const content = readFileIfExists(candidate)
+    const m = content.match(/^APP_IMAGE\s*=\s*"?([^"\n]+)"?/m)
+    if (m && m[1]) return m[1].trim()
+  }
+  throw new Error(
+    'APP_IMAGE not found. Set APP_IMAGE in your environment or add it to infra/deploy/.env (or .env.sample).'
+  )
+}
+
+const escapeSingleQuotes = (value: string) => value.replace(/'/g, "'\\''")
+
+let cachedSudoPassword: string | null =
+  process.env.CONSTRUCTA_SUDO_PASSWORD && process.env.CONSTRUCTA_SUDO_PASSWORD.trim().length > 0
+    ? process.env.CONSTRUCTA_SUDO_PASSWORD.trim()
+    : null
+
+const getSudoPassword = async (): Promise<string> => {
+  if (cachedSudoPassword) return cachedSudoPassword
+  const answer = await p.password({
+    message: 'Enter sudo password for the remote deploy user',
+    validate: (value) => (value.trim().length === 0 ? 'Password is required' : undefined)
+  })
+  if (p.isCancel(answer)) {
+    p.cancel('Sudo password is required for remote operations. Aborting.')
+    process.exit(1)
+  }
+  cachedSudoPassword = answer.trim()
+  return cachedSudoPassword
+}
+
+const runRemote = (
+  remote: Remote,
+  command: string,
+  description: string,
+  options: { sudo?: boolean; password?: string } = {}
+) => {
+  console.log(blue(`\nRunning: ${description}`))
+  const remoteTarget = `${remote.user}@${remote.host}`
+  const sshArgs = [remoteTarget, 'bash', '-lc', command]
+  const spawnOptions: Parameters<typeof spawnSync>[2] = {
+    stdio: ['pipe', 'inherit', 'inherit']
+  }
+  if (options.sudo) {
+    if (!options.password) throw new Error('sudo password missing for remote command')
+    spawnOptions.input = `${options.password}\n`
+  }
+  const result = spawnSync('ssh', sshArgs, spawnOptions)
+  if (result.status === 0) {
+    console.log(green(`✅ Success: ${description}`))
+    return
+  }
+  const err = result.error ? result.error : new Error(`ssh exited with code ${result.status}`)
+  const message = formatExecError(err)
+  console.error(red(`❌ Error running ${description}: ${message}`))
+  process.exit(result.status === null ? 1 : result.status)
+}
+
+// ---------- commands ----------
 const initCommand = defineCommand({
-  meta: {
-    name: 'init',
-    description: 'Initialize the project by installing dependencies and setting up services',
-  },
+  meta: { name: 'init', description: 'Initialize the project for local dev' },
   async run() {
-    console.log(cyan('🚀 Starting project initialization...'));
+    console.log(cyan('🚀 Starting project initialization...'))
+    runCommand('pnpm install', 'Install dependencies')
+    checkDocker()
+    console.log(yellow('ℹ️ Starting Docker containers. This might take a while...'))
+    // Removed non-existent mailhog service
+    runCommand(
+      'docker compose up -d db minio provision-minio redis meilisearch',
+      'Start core dev services (db, minio, redis, meilisearch)'
+    )
+    runCommand('npx drizzle-kit generate', 'Generate Drizzle kit')
+    runCommand('npx drizzle-kit migrate', 'Run Drizzle migrations')
 
-    runCommand('pnpm install', 'Install dependencies');
-    checkDocker();
-    console.log(yellow('ℹ️ Starting Docker containers. This might take a while...'));
-    runCommand('COMPOSE_PROFILES=dev docker compose up -d db minio provision-minio redis meilisearch mailhog', 'Start core dev services (db, minio, redis, meilisearch, mailhog)');
-    runCommand('npx drizzle-kit generate', 'Generate Drizzle kit');
-    runCommand('npx drizzle-kit migrate', 'Run Drizzle migrations');
-
-    // Check if auth schema already exists
-    const authSchemaPath = 'src/server/db/auth.schema.ts';
-    const dbSchemaPath = 'src/db/schema/auth.schema.ts';
-
+    const authSchemaPath = 'src/server/db/auth.schema.ts'
+    const dbSchemaPath = 'src/db/schema/auth.schema.ts'
     if (existsSync(authSchemaPath) && existsSync(dbSchemaPath)) {
-      console.log(green('✅ Better Auth schema files already exist'));
+      console.log(green('✅ Better Auth schema files already exist'))
     } else {
       try {
         runCommand(
           'npx -y @better-auth/cli@latest generate --config src/server/auth.ts --output src/server/db/auth.schema.ts',
           'Generate Better Auth schema'
-        );
+        )
       } catch (error) {
-        // Check if the files were created despite the error
         if (existsSync(authSchemaPath)) {
-          console.log(
-            yellow('⚠️ Better Auth CLI reported an error, but schema file was created successfully')
-          );
+          console.log(yellow('⚠️ Better Auth CLI reported an error, but schema file was created successfully'))
         } else {
-          throw error; // Re-throw if file wasn't created
+          throw error
         }
       }
     }
-
-    console.log(cyan('🎉 Project initialization complete!'));
-  },
-});
+    console.log(cyan('🎉 Project initialization complete!'))
+  }
+})
 
 const stopCommand = defineCommand({
-  meta: {
-    name: 'stop',
-    description: 'Stop running Docker containers',
-  },
+  meta: { name: 'stop', description: 'Stop running Docker containers (local dev)' },
   async run() {
-    console.log(cyan('🛑 Stopping Docker containers...'));
-    runCommand('docker compose down', 'Stop Docker containers');
-    console.log(cyan('✅ Docker containers stopped successfully'));
-  },
-});
+    console.log(cyan('🛑 Stopping Docker containers...'))
+    runCommand('docker compose down', 'Stop Docker containers')
+    console.log(cyan('✅ Docker containers stopped successfully'))
+  }
+})
 
 const reloadCommand = defineCommand({
-  meta: {
-    name: 'reload',
-    description: 'Reload Docker containers with updated configuration',
-  },
+  meta: { name: 'reload', description: 'Reload Docker containers with updated configuration (local dev)' },
   async run() {
-    console.log(cyan('🔄 Reloading Docker containers...'));
-    runCommand('docker compose down', 'Stop and remove existing Docker containers');
-    console.log(yellow('ℹ️ Starting Docker containers. This might take a while...'));
-    runCommand('COMPOSE_PROFILES=dev docker compose up -d db minio provision-minio redis meilisearch mailhog', 'Start core dev services (db, minio, redis, meilisearch, mailhog)');
-    console.log(cyan('✅ Docker containers reloaded successfully'));
-  },
-});
+    console.log(cyan('🔄 Reloading Docker containers...'))
+    runCommand('docker compose down', 'Stop and remove existing Docker containers')
+    console.log(yellow('ℹ️ Starting Docker containers. This might take a while...'))
+    // Removed non-existent mailhog service
+    runCommand(
+      'docker compose up -d db minio provision-minio redis meilisearch',
+      'Start core dev services (db, minio, redis, meilisearch)'
+    )
+    console.log(cyan('✅ Docker containers reloaded successfully'))
+  }
+})
 
 const recreateCommand = defineCommand({
   meta: {
     name: 'recreate',
-    description: 'Recreate Docker containers (optionally wipe data volume)',
+    description: 'Recreate Docker containers (optionally wipe data volumes) for local dev'
   },
   args: {
     wipeVolume: {
       type: 'boolean',
-      description: 'Also delete the data volume (DANGER: all data will be lost)',
-      default: false,
-    },
+      description: 'Also delete data volumes (DANGER: all data will be lost)',
+      default: false
+    }
   },
   async run({ args }) {
-    // Dynamically determine the project name and volume names
-    const projectName = basename(process.cwd());
-    const dbVolumeName = `${projectName}_ex0-data`;
-    const minioVolumeName = `${projectName}_ex0-minio-data`;
-
-    const { wipeVolume } = args;
+    const projectName = basename(process.cwd())
+    const dbVolumeName = `${projectName}_ex0-data`
+    const minioVolumeName = `${projectName}_ex0-minio-data`
+    const { wipeVolume } = args
 
     if (wipeVolume) {
-      // Use clack prompts for warning and confirmation only when wiping data
-      p.log.warn(
-        `🚨 WARNING: This command will stop containers, delete both volumes (${dbVolumeName}, ${minioVolumeName}), and start fresh containers.`
-      );
-      p.log.error('🚨 ALL DATA IN BOTH VOLUMES WILL BE PERMANENTLY LOST.\n');
-
-      const confirmWipe = await p.confirm({
-        message: 'Are you absolutely sure you want to delete both volumes and all their data?',
-        initialValue: false,
-      });
-
+      p.log.warn(`🚨 WARNING: This will delete volumes (${dbVolumeName}, ${minioVolumeName}).`)
+      const confirmWipe = await p.confirm({ message: 'Are you absolutely sure?', initialValue: false })
       if (p.isCancel(confirmWipe) || !confirmWipe) {
-        p.cancel('Operation cancelled.');
-        return;
+        p.cancel('Operation cancelled.')
+        return
       }
     } else {
-      p.log.info(
-        `ℹ️ This will recreate containers while keeping both volumes (${dbVolumeName}, ${minioVolumeName}) intact.`
-      );
+      p.log.info(`ℹ️ Volumes (${dbVolumeName}, ${minioVolumeName}) will be kept.`)
     }
 
-    const s = p.spinner();
-    s.start('Recreating Docker containers ...');
+    const s = p.spinner()
+    s.start('Recreating Docker containers ...')
 
     if (wipeVolume) {
-      // Stop and remove containers and volumes.
-      runCommand(
-        'docker compose down --volumes --remove-orphans',
-        'Stop and remove existing Docker containers, networks, and volumes'
-      );
-
-      // Rare edge-case cleanups
-      runCommand(
-        "sh -c 'docker rm -f ex0-db 2>/dev/null || true'",
-        'Force-remove lingering ex0-db container if it exists'
-      );
-
-      runCommand(
-        "sh -c 'docker rm -f ex0-minio 2>/dev/null || true'",
-        'Force-remove lingering ex0-minio container if it exists'
-      );
-
-      runCommand(
-        `sh -c 'docker volume rm -f ${dbVolumeName} 2>/dev/null || true'`,
-        `Force-remove Docker volume ${dbVolumeName} if it exists`
-      );
-
+      runCommand('docker compose down --volumes --remove-orphans', 'Stop containers and remove volumes')
+      runCommand("sh -c 'docker rm -f ex0-db 2>/dev/null || true'", 'Force-remove lingering ex0-db')
+      runCommand("sh -c 'docker rm -f ex0-minio 2>/dev/null || true'", 'Force-remove lingering ex0-minio')
+      runCommand(`sh -c 'docker volume rm -f ${dbVolumeName} 2>/dev/null || true'`, `Remove volume ${dbVolumeName}`)
       runCommand(
         `sh -c 'docker volume rm -f ${minioVolumeName} 2>/dev/null || true'`,
-        `Force-remove Docker volume ${minioVolumeName} if it exists`
-      );
+        `Remove volume ${minioVolumeName}`
+      )
     } else {
-      // Standard recreate (keep volumes)
-      runCommand(
-        'docker compose down --remove-orphans',
-        'Stop and remove existing Docker containers and networks (keeping volumes)'
-      );
+      runCommand('docker compose down --remove-orphans', 'Stop containers and remove networks (keep volumes)')
     }
 
-    runCommand('docker compose up -d', 'Start Docker containers');
+    runCommand('docker compose up -d', 'Start Docker containers')
+    s.stop(green('✅ Docker containers recreated successfully'))
 
-    s.stop(green('✅ Docker containers recreated successfully'));
-
-    // Offer to run the init command afterwards
-    const shouldInit = await p.confirm({
-      message:
-        "Would you like to run the 'init' command now to install dependencies and run migrations?",
-      initialValue: false,
-    });
-
-    if (!p.isCancel(shouldInit) && shouldInit) {
-      runCommand('pnpm run ex0 -- init', 'Run init command');
-    }
-
-    p.outro(
-      `Recreation complete for project '${projectName}'${wipeVolume ? ' (data volume wiped)' : ''}`
-    );
-  },
-});
+    const shouldInit = await p.confirm({ message: "Run 'init' now to install deps & run migrations?", initialValue: false })
+    if (!p.isCancel(shouldInit) && shouldInit) runCommand('pnpm run ex0 -- init', 'Run init command')
+    p.outro(`Recreation complete for '${projectName}'${wipeVolume ? ' (data volume wiped)' : ''}`)
+  }
+})
 
 const gcCommand = defineCommand({
-  meta: {
-    name: 'gc',
-    description: 'Prune unused Docker images and build cache safely',
-  },
+  meta: { name: 'gc', description: 'Prune unused Docker images and build cache safely (local)' },
   args: {
     age: {
       type: 'string',
       description: 'Only prune artifacts unused for this long (e.g., 168h, 30m, 7h30m)',
-      default: '720h', // 30 days
+      default: '720h'
     },
-    dry: {
-      type: 'boolean',
-      description: 'Show what would be removed without deleting',
-      default: false,
-    },
+    dry: { type: 'boolean', description: 'Show what would be removed without deleting', default: false }
   },
   async run({ args }) {
-    checkDocker();
-    console.log(cyan(`🧹 Docker GC: pruning unused images/build cache older than ${args.age}...`));
+    checkDocker()
+    console.log(cyan(`🧹 Docker GC: pruning unused images/build cache older than ${args.age}...`))
     if (args.dry) {
-      runCommand('docker system df', 'Show Docker disk usage (dry run)');
-      console.log(yellow('Dry run mode: not deleting anything. To prune, run without --dry.'));
-      return;
+      runCommand('docker system df', 'Show Docker disk usage (dry run)')
+      console.log(yellow('Dry run mode: not deleting anything.'))
+      return
     }
-    runCommand('docker system df', 'Show Docker disk usage (before)');
-    runCommand(`sh -c 'docker image prune -a -f --filter "until=${args.age}" || true'`, 'Prune unused images');
-    runCommand(`sh -c 'docker builder prune -a -f --filter "unused-for=${args.age}" || true'`, 'Prune build cache');
-    runCommand('docker system df', 'Show Docker disk usage (after)');
-  },
-});
+    runCommand('docker system df', 'Show Docker disk usage (before)')
+    runCommand(
+      `sh -c 'docker image prune -a -f --filter "until=${args.age}" || true'`,
+      'Prune old/unused images'
+    )
+    runCommand(
+      `sh -c 'docker builder prune -a -f --filter "unused-for=${args.age}" || true'`,
+      'Prune old/unused build cache'
+    )
+    runCommand('docker system df', 'Show Docker disk usage (after)')
+  }
+})
 
-const testdataCommand = defineCommand({
-  meta: {
-    name: 'testdata',
-    description: 'Create or delete seed test data in the database',
-  },
+// ----- Build & Release (Compose-first) -----
+const releaseCommand = defineCommand({
+  meta: { name: 'release', description: 'Build and push application image (requires Docker buildx)' },
   args: {
-    create: {
-      type: 'boolean',
-      description: 'Insert the demo data',
-      default: false,
+    tag: { type: 'string', description: 'Image tag', default: 'latest' },
+    image: {
+      type: 'string',
+      description: 'Fully-qualified image (e.g. ghcr.io/org/repo/app)',
+      default: ''
     },
-    delete: {
-      type: 'boolean',
-      description: 'Remove the demo data',
-      default: false,
+    platform: {
+      type: 'string',
+      description: 'Build platforms list for buildx',
+      default: 'linux/amd64'
     },
+    push: { type: 'boolean', description: 'Push image after build', default: true }
   },
   async run({ args }) {
-    if (args.create === args.delete) {
-      console.error(red('Please specify exactly one of --create or --delete'));
-      process.exit(1);
+    checkDocker()
+    const image = (args.image && args.image.length > 0 ? args.image : detectAppImage()).trim()
+    const tag = args.tag.trim()
+    console.log(cyan(`📦 Building ${image}:${tag} (${args.platform})`))
+    if (args.push) {
+      runCommand(
+        `docker buildx build --platform ${args.platform} -t ${image}:${tag} --push .`,
+        `Build & push ${image}:${tag}`
+      )
+    } else {
+      runCommand(`docker build -t ${image}:${tag} .`, `Build ${image}:${tag}`)
     }
+  }
+})
 
-    if (!process.env.DATABASE_URL) {
-      console.error(red('DATABASE_URL environment variable is required'));
-      process.exit(1);
-    }
-
-    const s = p.spinner();
-    try {
-      if (args.create) {
-        s.start('Inserting test data...');
-        const { createAllTestData } = await import('../src/db/test-data');
-        await createAllTestData();
-        s.stop(green('✅ Inserted test data'));
-      } else {
-        s.start('Deleting test data...');
-        const { deleteAllTestData } = await import('../src/db/test-data');
-        await deleteAllTestData();
-        s.stop(green('✅ Deleted test data'));
-      }
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error(red(`❌ ${error.message}`));
-      } else {
-        console.error(red('❌ Unknown error while managing test data'));
-      }
-      process.exit(1);
-    }
-  },
-});
-
-const deployCommand = defineCommand({
-  meta: {
-    name: 'deploy',
-    description: 'Deploy to Dokku (dev or prod) via git push',
-  },
+// ----- Remote Compose Deploy -----
+const deployComposeCommand = defineCommand({
+  meta: { name: 'deploy', description: 'Deploy to remote host using docker compose (pull + migrate + up)' },
   args: {
-    env: {
-      type: 'string',
-      description: 'Target environment: dev or prod',
-      default: 'prod',
-    },
-    ref: {
-      type: 'string',
-      description: 'Git ref to push (e.g., main, HEAD)',
-      default: 'HEAD',
-    },
+    env: { type: 'string', description: 'Target environment: dev or prod', default: 'dev' },
+    tag: { type: 'string', description: 'App image tag to deploy', default: 'latest' },
+    dir: { type: 'string', description: 'Remote compose directory', default: '/opt/constructa' },
+    migrate: { type: 'boolean', description: 'Run DB migrations before up', default: true }
   },
   async run({ args }) {
-    const { remoteName } = resolveDokkuRemote(args.env);
-    const pushRef = `${args.ref}:main`;
-    runCommand(`git push ${remoteName} ${pushRef}`, `Deploy ${args.ref} to ${args.env} (${remoteName})`);
-  },
-});
+    const remote = resolveRemote(args.env as 'dev' | 'prod')
+    const password = await getSudoPassword()
+    const safeDir = escapeSingleQuotes(args.dir)
+    const safeTag = escapeSingleQuotes(args.tag)
+    const base = `cd '${safeDir}' && export APP_TAG='${safeTag}'`
 
-const deployImageCommand = defineCommand({
-  meta: {
-    name: 'deploy-image',
-    description: 'Build a local Docker image and deploy it to Dokku without pushing git refs',
-  },
+    runRemote(
+      remote,
+      `${base} && sudo -SE docker compose pull app worker`,
+      'Pull app/worker images',
+      { sudo: true, password }
+    )
+    if (args.migrate) {
+      runRemote(
+        remote,
+        `${base} && sudo -SE docker compose run --rm migrate`,
+        'Run database migrations',
+        { sudo: true, password }
+      )
+    }
+    runRemote(
+      remote,
+      `${base} && sudo -SE docker compose up -d app worker caddy`,
+      'Restart app/worker/caddy',
+      { sudo: true, password }
+    )
+  }
+})
+
+// ----- Deploy current branch by tag (branch-shortsha) -----
+const deployBranchCommand = defineCommand({
+  meta: { name: 'deploy-branch', description: 'Build, push and deploy the current branch by tag (branch-shortsha)' },
   args: {
-    env: {
-      type: 'string',
-      description: 'Target environment: dev or prod',
-      default: 'prod',
-    },
-    tag: {
-      type: 'string',
-      description: 'Image tag to use when saving to Dokku',
-      default: 'latest',
-    },
+    env: { type: 'string', default: 'dev' },
+    dir: { type: 'string', default: '/opt/constructa' },
+    branch: { type: 'string', default: '' } // optional override
   },
   async run({ args }) {
-    checkDocker();
-    const { host, app } = resolveDokkuRemote(args.env);
+    const branchRaw =
+      args.branch && args.branch.length > 0
+        ? args.branch
+        : execSync('git rev-parse --abbrev-ref HEAD', { stdio: 'pipe' }).toString().trim()
+    const shortSha = execSync('git rev-parse --short HEAD', { stdio: 'pipe' }).toString().trim()
+    const tagSafe = branchRaw
+      .toLowerCase()
+      .replace(/^origin\//, '')
+      .replace(/[^a-z0-9._-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+    const tag = `${tagSafe}-${shortSha}`
 
-    const localTag = `dokku/${app}:${args.tag}`;
+    await releaseCommand.run({ args: { tag, image: '', platform: 'linux/amd64', push: true }, options: {}, rawArgs: [] })
+    await deployComposeCommand.run({ args: { env: args.env, tag, dir: args.dir }, options: {}, rawArgs: [] })
+  }
+})
 
-    runCommand(`docker build -t ${localTag} .`, 'Build local Docker image');
-
-    const transferCmd = `sh -c "docker save ${localTag} | gzip | ssh ${host} 'gunzip | docker load'"`;
-    runCommand(transferCmd, `Transfer ${localTag} to ${host}`);
-
-    const deployCmd = `ssh ${host} 'dokku git:from-image ${app} ${localTag}'`;
-    runCommand(deployCmd, `Deploy ${localTag} to ${args.env} (${host})`);
+// ----- Logs & Restart on remote (defaults to dev) -----
+const logsCommand = defineCommand({
+  meta: { name: 'logs', description: 'Stream remote compose logs' },
+  args: {
+    env: { type: 'string', default: 'dev' },
+    service: { type: 'string', default: 'app' },
+    tail: { type: 'number', default: 100 }
   },
-});
+  async run({ args }) {
+    const remote = resolveRemote(args.env as 'dev' | 'prod')
+    const password = await getSudoPassword()
+    const safeTail = Number.isFinite(args.tail) ? args.tail : 100
+    const safeService = escapeSingleQuotes(args.service)
+    const command = `cd '/opt/constructa' && sudo -SE docker compose logs -f --tail=${safeTail} '${safeService}'`
+    runRemote(remote, command, `Logs (${args.service})`, { sudo: true, password })
+  }
+})
 
 const restartCommand = defineCommand({
-  meta: {
-    name: 'restart',
-    description: 'Restart the Dokku web app and remote compose worker',
-  },
+  meta: { name: 'restart', description: 'Restart remote compose service(s)' },
+  args: { env: { type: 'string', default: 'dev' }, service: { type: 'string', default: 'app' } },
+  async run({ args }) {
+    const remote = resolveRemote(args.env as 'dev' | 'prod')
+    const password = await getSudoPassword()
+    const safeService = escapeSingleQuotes(args.service)
+    const command = `cd '/opt/constructa' && sudo -SE docker compose restart '${safeService}'`
+    runRemote(remote, command, `Restart ${args.service}`, { sudo: true, password })
+  }
+})
+
+// ----- Vault helpers (edit/view) -----
+const vaultEditCommand = defineCommand({
+  meta: { name: 'edit', description: 'Open Vault-encrypted vars file for editing (creates if missing)' },
   args: {
-    env: {
+    file: {
       type: 'string',
-      description: 'Target environment: dev or prod',
-      default: 'prod',
-    },
-    composeDir: {
-      type: 'string',
-      description: 'Remote compose directory (defaults to EX0_REMOTE_COMPOSE_DIR or /opt/constructa)',
-    },
+      default: 'infra/ansible/group_vars/constructa/vars.yml',
+      description: 'Path to Vault-encrypted group vars'
+    }
   },
   async run({ args }) {
-    const { host, app } = resolveDokkuRemote(args.env);
-    const composeDir = args.composeDir || process.env.EX0_REMOTE_COMPOSE_DIR || '/opt/constructa';
-    const escapedDir = escapeForDoubleQuotes(composeDir);
-
-    let restartSucceeded = false;
-
-    const restartDescription = `Restart Dokku app ${app} on ${args.env}`;
-    const restartResult = attemptCommand(
-      `ssh ${host} dokku ps:restart ${app}`,
-      restartDescription,
-      true
-    );
-
-    if (restartResult.ok) {
-      restartSucceeded = true;
+    const file = args.file
+    if (!existsSync(file)) {
+      console.log(yellow(`Vars file not found. Creating encrypted file at ${file}...`))
+      runCommand(`ansible-vault create ${file}`, 'Create encrypted vars file')
     } else {
-      const appsRestartDescription = `Restart Dokku app ${app} via apps:restart on ${args.env}`;
-      const appsRestartResult = attemptCommand(
-        `ssh ${host} dokku apps:restart ${app}`,
-        appsRestartDescription,
-        true
-      );
-
-      if (appsRestartResult.ok) {
-        restartSucceeded = true;
-      } else {
-        console.log(yellow('ps/apps restart failed; trying ps:stop/ps:start fallback...'));
-
-        attemptCommand(`ssh ${host} dokku ps:stop ${app} || true`, `Stop Dokku app ${app} on ${args.env}`, true);
-        const startResult = attemptCommand(
-          `ssh ${host} dokku ps:start ${app}`,
-          `Start Dokku app ${app} on ${args.env}`,
-          true
-        );
-
-        if (startResult.ok) {
-          restartSucceeded = true;
-        } else {
-          console.error(
-            red(
-              `❌ All Dokku restart strategies failed. Please restart the app manually. Last error:\n${startResult.message || 'unknown error'}`
-            )
-          );
-          process.exit(1);
-        }
-      }
+      runCommand(`ansible-vault edit ${file}`, 'Edit encrypted vars file')
     }
+  }
+})
 
-    runCommand(
-      `ssh ${host} "cd ${escapedDir} && docker compose up -d worker"`,
-      `Restart compose worker in ${composeDir}`
-    );
-  },
-});
-
-const logsCommand = defineCommand({
-  meta: {
-    name: 'logs',
-    description: 'Stream Dokku logs for the app',
-  },
+const vaultViewCommand = defineCommand({
+  meta: { name: 'view', description: 'View Vault-encrypted vars (stdout)' },
   args: {
-    env: {
+    file: {
       type: 'string',
-      description: 'Target environment: dev or prod',
-      default: 'prod',
-    },
-    worker: {
-      type: 'boolean',
-      description: 'If true, stream worker logs instead of web logs',
-      default: false,
-    },
-    tail: {
-      type: 'number',
-      description: 'Show the last N lines before streaming',
-      default: 50,
-    },
+      default: 'infra/ansible/group_vars/constructa/vars.yml',
+      description: 'Path to Vault-encrypted group vars'
+    }
   },
   async run({ args }) {
-    const { host, app } = resolveDokkuRemote(args.env);
-    const processType = args.worker ? ':worker' : '';
-    const processName = args.worker ? 'worker' : 'web';
-    const numFlag = args.tail ? `--num ${args.tail}` : '';
-    const remoteArgs = ['logs', app, '--ps', processName, numFlag, '-t']
-      .filter(Boolean)
-      .join(' ');
-    const baseCmd = `ssh ${host} ${remoteArgs}`;
-    runCommand(baseCmd, `Stream ${args.worker ? 'worker' : 'web'} logs from ${args.env}`);
-  },
-});
+    runCommand(`ansible-vault view ${args.file}`, 'View encrypted vars file')
+  }
+})
 
+const vaultCommand = defineCommand({
+  meta: { name: 'vault', description: 'Manage Ansible Vault files' },
+  subCommands: { edit: vaultEditCommand, view: vaultViewCommand }
+})
+
+// ----- SSH tunnels & services -----
 const tunnelUpCommand = defineCommand({
-  meta: {
-    name: 'up',
-    description: 'Open SSH tunnels for self-hosted services (MinIO, Mailhog)',
-  },
-  args: {
-    env: {
-      type: 'string',
-      description: 'Target environment: dev or prod',
-      default: 'dev',
-    },
-    user: {
-      type: 'string',
-      description: 'SSH user to use for the tunnel (defaults to deploy@host)',
-      default: '',
-    },
-  },
+  meta: { name: 'up', description: 'Open SSH tunnels for MinIO (requires 127.0.0.1 bindings on the server)' },
+  args: { env: { type: 'string', default: 'dev' }, user: { type: 'string', default: '' } },
   async run({ args }) {
-    const { host } = resolveDokkuRemote(args.env);
-    const { username, hostname, port } = parseHostParts(host);
-    const sshUser = args.user || (username && username !== 'dokku' ? username : 'deploy');
-    const target = `${sshUser}@${hostname}${port ? `:${port}` : ''}`;
-
-    const forwards = TUNNEL_FORWARDS.flatMap((forward) => [
-      '-L',
-      `${forward.localPort}:127.0.0.1:${forward.remotePort}`,
-    ]);
-
-    const sshArgs = ['-N', '-f', '-T', '-o', 'ExitOnForwardFailure=yes', ...forwards, target];
-
-    console.log(cyan(`Opening tunnels to ${target}...`));
-    const result = spawnSync('ssh', sshArgs, { stdio: 'inherit' });
+    const { host, user } = resolveRemote(args.env as 'dev' | 'prod')
+    const sshUser = args.user || user
+    const forwards = TUNNEL_FORWARDS.flatMap((f) => ['-L', `${f.localPort}:127.0.0.1:${f.remotePort}`])
+    const sshArgs = ['-N', '-f', '-T', '-o', 'ExitOnForwardFailure=yes', ...forwards, `${sshUser}@${host}`]
+    console.log(cyan(`Opening tunnels to ${sshUser}@${host}...`))
+    const result = spawnSync('ssh', sshArgs, { stdio: 'inherit' })
     if (result.status !== 0) {
-      console.error(red('❌ Failed to establish tunnels. Check SSH connectivity and permissions.'));
-      process.exit(result.status ?? 1);
+      console.error(red('❌ Failed to establish tunnels. Check SSH connectivity and permissions.'))
+      process.exit(result.status ?? 1)
     }
-
-    const commandString = ['ssh', ...sshArgs].join(' ');
-    const entries = readTunnelEntries();
-    entries.push({ command: commandString });
-    writeTunnelEntries(entries);
-
-    console.log(green('✅ Tunnels established. Access services locally:'));
-    for (const forward of TUNNEL_FORWARDS) {
-      console.log(`  • ${forward.name}: ${forward.url}`);
-    }
-    console.log(yellow('Use `pnpm run ex0 -- tunnel down` to close tunnels when finished.'));
-  },
-});
+    const commandString = ['ssh', ...sshArgs].join(' ')
+    const entries = readTunnelEntries()
+    entries.push({ command: commandString })
+    writeTunnelEntries(entries)
+    console.log(green('✅ Tunnels established. Access services locally:'))
+    for (const f of TUNNEL_FORWARDS) console.log(`  • ${f.name}: ${f.url}`)
+    console.log(yellow('Use `pnpm run ex0 -- tunnel down` to close tunnels.'))
+  }
+})
 
 const tunnelDownCommand = defineCommand({
-  meta: {
-    name: 'down',
-    description: 'Close SSH tunnels opened with `tunnel up`',
-  },
+  meta: { name: 'down', description: 'Close SSH tunnels opened with `tunnel up`' },
   async run() {
-    const entries = readTunnelEntries();
+    const entries = readTunnelEntries()
     if (!entries.length) {
-      console.log(yellow('ℹ️ No tunnel state file found. Nothing to close.'));
-      return;
+      console.log(yellow('ℹ️ No tunnel state file found. Nothing to close.'))
+      return
     }
-
-    let closed = 0;
+    let closed = 0
     for (const entry of entries) {
       try {
-        spawnSync('pkill', ['-f', entry.command], { stdio: 'ignore' });
-        closed += 1;
+        spawnSync('pkill', ['-f', entry.command], { stdio: 'ignore' })
+        closed += 1
       } catch {
-        // ignore
+        /* ignore */
       }
     }
-
-    clearTunnelEntries();
-    console.log(green(`✅ Closed ${closed} tunnel${closed === 1 ? '' : 's'}.`));
-  },
-});
+    clearTunnelEntries()
+    console.log(green(`✅ Closed ${closed} tunnel${closed === 1 ? '' : 's'}.`))
+  }
+})
 
 const tunnelStatusCommand = defineCommand({
-  meta: {
-    name: 'status',
-    description: 'Show status of SSH tunnels',
-  },
+  meta: { name: 'status', description: 'Show status of SSH tunnels' },
   async run() {
-    const entries = readTunnelEntries();
+    const entries = readTunnelEntries()
     if (!entries.length) {
-      console.log(yellow('ℹ️ No recorded tunnels. Run `pnpm run ex0 -- tunnel up` first.'));
-      return;
+      console.log(yellow('ℹ️ No recorded tunnels. Run `pnpm run ex0 -- tunnel up` first.'))
+      return
     }
-
-    console.log(cyan('Current tunnel processes:'));
+    console.log(cyan('Current tunnel processes:'))
     for (const entry of entries) {
-      const res = spawnSync('pgrep', ['-f', entry.command], { stdio: 'pipe' });
-      const active = res.status === 0 && res.stdout.toString().trim().length > 0;
-      console.log(`  • ${entry.command} ${active ? green('(active)') : red('(not running)')}`);
+      const res = spawnSync('pgrep', ['-f', entry.command], { stdio: 'pipe' })
+      const active = res.status === 0 && res.stdout.toString().trim().length > 0
+      console.log(`  • ${entry.command} ${active ? green('(active)') : red('(not running)')}`)
     }
-    console.log(cyan('Local endpoints:'));
-    for (const forward of TUNNEL_FORWARDS) {
-      console.log(`    ${forward.name}: ${forward.url}`);
-    }
-  },
-});
+    console.log(cyan('Local endpoints:'))
+    for (const f of TUNNEL_FORWARDS) console.log(`    ${f.name}: ${f.url}`)
+  }
+})
 
 const tunnelCommand = defineCommand({
-  meta: {
-    name: 'tunnel',
-    description: 'Manage SSH tunnels to internal services',
-  },
-  subCommands: {
-    up: tunnelUpCommand,
-    down: tunnelDownCommand,
-    status: tunnelStatusCommand,
-  },
-});
+  meta: { name: 'tunnel', description: 'Manage SSH tunnels to internal services' },
+  subCommands: { up: tunnelUpCommand, down: tunnelDownCommand, status: tunnelStatusCommand }
+})
 
 const SERVICES = [
   {
@@ -775,89 +563,78 @@ const SERVICES = [
     description: 'S3-compatible storage UI & API',
     links: [
       { label: 'Console', url: 'http://localhost:9001', note: 'Requires tunnel' },
-      { label: 'S3 API', url: 'http://localhost:9000', note: 'Requires tunnel' },
-    ],
-  },
-  {
-    key: 'mailhog',
-    name: 'Mailhog SMTP viewer',
-    description: 'Dev mail inbox UI',
-    links: [{ label: 'Web UI', url: 'http://localhost:8025', note: 'Requires tunnel' }],
-  },
-];
+      { label: 'S3 API', url: 'http://localhost:9000', note: 'Requires tunnel' }
+    ]
+  }
+]
 
 const servicesListCommand = defineCommand({
-  meta: {
-    name: 'list',
-    description: 'List self-hosted services and access URLs',
-  },
+  meta: { name: 'list', description: 'List self-hosted services and access URLs' },
   async run() {
-    console.log(cyan('Available internal services (accessible once tunnels are up):'));
+    console.log(cyan('Available internal services (accessible once tunnels are up):'))
     for (const svc of SERVICES) {
-      console.log(`\n${green(svc.name)} – ${svc.description}`);
-      for (const link of svc.links) {
-        console.log(`  • ${link.label}: ${link.url} (${link.note})`);
-      }
+      console.log(`\n${green(svc.name)} – ${svc.description}`)
+      for (const link of svc.links) console.log(`  • ${link.label}: ${link.url} (${link.note})`)
     }
-    console.log(`\n${yellow('Tip:')} run ${cyan('pnpm run ex0 -- tunnel up')} to open local forwards.`);
-  },
-});
+    console.log(`\n${yellow('Tip:')} run ${cyan('pnpm run ex0 -- tunnel up')} to open local forwards.`)
+  }
+})
 
 const createServiceCommand = (key: string) =>
   defineCommand({
-    meta: {
-      name: key,
-      description: `Show ${key} service details`,
-    },
+    meta: { name: key, description: `Show ${key} service details` },
     async run() {
-      const svc = SERVICES.find((service) => service.key === key);
+      const svc = SERVICES.find((s) => s.key === key)
       if (!svc) {
-        console.error(red(`Unknown service: ${key}`));
-        process.exit(1);
+        console.error(red(`Unknown service: ${key}`))
+        process.exit(1)
       }
-      console.log(`${green(svc.name)} – ${svc.description}`);
-      for (const link of svc.links) {
-        console.log(`  • ${link.label}: ${link.url} (${link.note})`);
-      }
-      console.log(`\n${yellow('Hint:')} start tunnels with ${cyan('pnpm run ex0 -- tunnel up')}.`);
-    },
-  });
+      console.log(`${green(svc.name)} – ${svc.description}`)
+      for (const link of svc.links) console.log(`  • ${link.label}: ${link.url} (${link.note})`)
+      console.log(`\n${yellow('Hint:')} start tunnels with ${cyan('pnpm run ex0 -- tunnel up')}.`)
+    }
+  })
 
 const servicesCommand = defineCommand({
-  meta: {
-    name: 'services',
-    description: 'Describe internal services (MinIO, Mailhog, etc.)',
-  },
-  subCommands: {
-    list: servicesListCommand,
-    minio: createServiceCommand('minio'),
-    mailhog: createServiceCommand('mailhog'),
-  },
+  meta: { name: 'services', description: 'Describe internal services (MinIO)' },
+  subCommands: { list: servicesListCommand, minio: createServiceCommand('minio') },
   async run() {
-    await servicesListCommand.run({ args: {}, options: {}, rawArgs: [] });
-  },
-});
+    await servicesListCommand.run({ args: {}, options: {}, rawArgs: [] })
+  }
+})
+
+// ----- Test data helper -----
+const testdataCommand = defineCommand({
+  meta: { name: 'testdata', description: 'Seed local dev database with test data' },
+  async run() {
+    runCommand('npx drizzle-kit migrate', 'Run migrations')
+    runCommand('node --import tsx/loader src/db/test-data.ts', 'Load test data')
+  }
+})
 
 const main = defineCommand({
-  meta: {
-    name: 'cli',
-    version: '1.0.0',
-    description: 'Project management CLI',
-  },
+  meta: { name: 'cli', version: '2.0.0', description: 'Project management CLI (Compose-first, Vault-aware)' },
   subCommands: {
+    // local
     init: initCommand,
     stop: stopCommand,
     reload: reloadCommand,
     recreate: recreateCommand,
     gc: gcCommand,
     testdata: testdataCommand,
-    deploy: deployCommand,
-    'deploy-image': deployImageCommand,
-    restart: restartCommand,
+    // release/deploy
+    release: releaseCommand,
+    deploy: deployComposeCommand,
+    'deploy-branch': deployBranchCommand,
+    // remote ops
     logs: logsCommand,
+    restart: restartCommand,
+    // tunnels/services
     tunnel: tunnelCommand,
     services: servicesCommand,
-  },
-});
+    // vault helpers
+    vault: vaultCommand
+  }
+})
 
-runMain(main);
+runMain(main)

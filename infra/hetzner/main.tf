@@ -51,7 +51,8 @@ resource "hcloud_server" "app" {
   ssh_keys     = [hcloud_ssh_key.me.id]
   firewall_ids = [hcloud_firewall.app.id]
   user_data    = templatefile("${path.module}/cloud-init.yaml", {
-    deploy_username  = var.deploy_username
+    deploy_username   = var.deploy_username
     deploy_ssh_pubkey = local.ssh_pub_key
+    allowed_ssh_cidr  = var.allowed_ssh_cidr
   })
 }

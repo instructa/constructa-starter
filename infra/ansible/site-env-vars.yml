@@ -1,5 +1,0 @@
----
-- import_playbook:
-    file: site.yml
-  tags:
-    - env

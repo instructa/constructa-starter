@@ -1,0 +1,20 @@
+{
+  email {env.ACME_EMAIL}
+  servers { protocols h1 h2 h3 }
+}
+
+{env.APP_HOSTNAME} {
+  encode zstd gzip
+  header {
+    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "no-referrer-when-downgrade"
+    Permissions-Policy "camera=(), microphone=(), geolocation=()"
+  }
+
+  @options method OPTIONS
+  handle @options { respond 204 }
+
+  reverse_proxy app:3000
+}

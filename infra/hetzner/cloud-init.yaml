@@ -1,9 +1,11 @@
 #cloud-config
+ssh_pwauth: false
+disable_root: true
+
 users:
   - name: ${deploy_username}
     groups: [sudo]
     shell: /bin/bash
-    sudo: ALL=(ALL) ALL
     ssh_authorized_keys:
       - ${deploy_ssh_pubkey}
 
@@ -13,16 +15,28 @@ packages:
   - ca-certificates
   - curl
   - gnupg
-  - git
   - ufw
-  - apt-transport-https
-  - wget
-  - software-properties-common
-  - dirmngr
-  - lsb-release
+  - fail2ban
+  - git
+
+write_files:
+  - path: /etc/fail2ban/jail.d/sshd.local
+    permissions: '0644'
+    owner: root:root
+    content: |
+      [sshd]
+      enabled = true
+      port    = 22
+      filter  = sshd
+      logpath = %(sshd_log)s
+      maxretry = 5
+      bantime  = 1h
+      findtime = 10m
+      # Whitelist your Terraform-var-provided CIDR to reduce false positives
+      ignoreip = 127.0.0.1/8 ::1 ${allowed_ssh_cidr}
 
 runcmd:
-  # Install Docker (required by Dokku)
+  # Install Docker Engine + Compose plugin
   - install -m 0755 -d /etc/apt/keyrings
   - bash -c 'curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg'
   - chmod a+r /etc/apt/keyrings/docker.gpg
@@ -31,23 +45,13 @@ runcmd:
   - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl enable --now docker
 
-  # Wait for Docker to be ready
-  - sleep 10
-  - docker version
-
-  # Install Dokku (latest stable version)
-  - |
-    cd /tmp
-    wget https://dokku.com/install/v0.36.7/bootstrap.sh
-    chmod +x bootstrap.sh
-    DOKKU_TAG=v0.36.7 ./bootstrap.sh
-
-  # Configure firewall for Dokku
-  - ufw allow OpenSSH
-  - ufw allow http
-  - ufw allow https
+  # UFW: only SSH (from your CIDR) and HTTP/HTTPS
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow from ${allowed_ssh_cidr} to any port 22 proto tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
   - ufw --force enable
 
-  # Basic Dokku configuration
-  - dokku domains:add-global ex0.dev
-  - dokku config:set --global DOKKU_LETSENCRYPT_EMAIL=admin@ex0.dev
+  # Fail2ban
+  - systemctl enable --now fail2ban

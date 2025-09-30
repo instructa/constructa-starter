@@ -1,21 +1,20 @@
 ---
-- name: Provision Constructa stack
+- name: Provision Constructa stack (Compose-only)
   hosts: constructa
   gather_facts: false
+
   pre_tasks:
     - name: Ensure python3 exists on host
       become: true
       raw: test -e /usr/bin/python3 || (apt-get update && apt-get install -y python3)
       changed_when: false
 
-    - name: Fail if required variables are missing
+    - name: Fail if constructa_env variable is missing
       assert:
         that:
-          - constructa_app_name is defined
-          - constructa_domain is defined
-          - constructa_compose_env is defined
-          - constructa_dokku_config is defined
-        fail_msg: "Populate infra/ansible/group_vars/constructa/vars.yml (see vars.example.yml)."
+          - constructa_env is defined
+          - constructa_env | dict2items | length > 0
+        fail_msg: "Populate infra/ansible/group_vars/constructa/vars.yml (encrypt with Vault) before running the playbook."
 
     - name: Ensure compose directory exists
       become: true
@@ -26,6 +25,7 @@
         group: "{{ ansible_user | default('deploy') }}"
         mode: "0755"
 
+    # --- Optional swap management (kept from previous playbook) ---
     - name: Check for active swap
       become: true
       command: swapon --show=NAME --noheadings
@@ -108,19 +108,24 @@
         - (constructa_swap_matches | default(0) | int) == 0
 
   tasks:
-    - name: Sync compose bundle
+    - name: Sync compose bundle (excluding .env; rendered from Vault below)
       ansible.posix.synchronize:
         src: "{{ playbook_dir }}/../deploy/"
         dest: "{{ constructa_deploy_dir }}/"
         delete: true
+        rsync_opts:
+          - "--exclude=.env"
 
-    - name: Render compose env file
+    - name: Render compose env file from Vault values
+      become: true
       template:
-        src: constructa.env.j2
+        src: templates/.env.j2
         dest: "{{ constructa_deploy_dir }}/.env"
         mode: "0600"
         owner: "{{ ansible_user | default('deploy') }}"
         group: "{{ ansible_user | default('deploy') }}"
+      vars:
+        env_map: "{{ constructa_env }}"
       tags: [env]
 
     - name: Docker login to registry (optional)
@@ -129,7 +134,7 @@
       no_log: true
       when: constructa_enable_registry_login | default(false) | bool
 
-    - name: Ensure core compose services are running
+    - name: Ensure core compose services are running (db/minio/redis/meilisearch)
       become: true
       command:
         argv:
@@ -184,9 +189,8 @@
         chdir: "{{ constructa_deploy_dir }}"
       register: migrate_result
       changed_when: true
-      when: constructa_run_compose_migrate | default(false) | bool
 
-    - name: Ensure compose worker is running
+    - name: Ensure app, caddy and worker are running
       become: true
       command:
         argv:
@@ -196,281 +200,18 @@
           - compose.yml
           - up
           - -d
+          - app
+          - caddy
           - worker
       args:
         chdir: "{{ constructa_deploy_dir }}"
-      register: compose_worker
+      register: compose_up
       changed_when: >-
-        'Creating' in compose_worker.stdout or
-        'Starting' in compose_worker.stdout or
-        'Recreating' in compose_worker.stdout
+        'Creating' in compose_up.stdout or
+        'Starting' in compose_up.stdout or
+        'Recreating' in compose_up.stdout
 
-    - name: Check if Dokku app exists
-      become: true
-      command:
-        argv:
-          - dokku
-          - apps:exists
-          - "{{ constructa_app_name }}"
-      register: dokku_app_exists
-      failed_when: dokku_app_exists.rc not in [0, 1]
-      changed_when: false
-
-    - name: Create Dokku app when missing
-      become: true
-      command:
-        argv:
-          - dokku
-          - apps:create
-          - "{{ constructa_app_name }}"
-      when: dokku_app_exists.rc != 0
-
-    - name: Configure Dokku domain
-      become: true
-      command:
-        argv:
-          - dokku
-          - domains:set
-          - "{{ constructa_app_name }}"
-          - "{{ constructa_domain }}"
-
-    - name: Determine primary domain for redirects
-      set_fact:
-        constructa_primary_domain: "{{ (constructa_domain | string).split()[0] }}"
-      when: (constructa_redirect_domains | default([])) | length > 0
-
-    - name: Determine if redirect domains configured
-      set_fact:
-        constructa_redirect_enabled: "{{ (constructa_redirect_domains | default([])) | length > 0 }}"
-
-    - name: Check installed Dokku plugins
-      become: true
-      command:
-        argv:
-          - dokku
-          - plugin:list
-      register: constructa_dokku_plugins
-      changed_when: false
-
-    - name: Check if Dokku redirect plugin installed
-      become: true
-      command:
-        argv:
-          - dokku
-          - plugin:installed
-          - redirect
-      register: constructa_redirect_installed
-      changed_when: false
-      failed_when: constructa_redirect_installed.rc not in [0, 1]
-      when:
-        - constructa_redirect_enabled | default(false) | bool
-        - constructa_redirect_plugin_repo is defined
-        - constructa_redirect_plugin_repo | length > 0
-
-    - name: Install Dokku redirect plugin when missing
-      become: true
-      command:
-        argv:
-          - dokku
-          - plugin:install
-          - "{{ constructa_redirect_plugin_repo | default('https://github.com/dokku/dokku-redirect.git') }}"
-          - --committish
-          - "{{ constructa_redirect_plugin_version }}"
-      register: constructa_redirect_install
-      when:
-        - constructa_redirect_enabled | default(false) | bool
-        - constructa_redirect_plugin_repo is defined
-        - constructa_redirect_plugin_repo | length > 0
-        - constructa_redirect_plugin_version is defined
-        - constructa_redirect_plugin_version | length > 0
-        - constructa_redirect_installed is defined
-        - constructa_redirect_installed.rc != 0
-      changed_when: true
-
-    - name: Pin Dokku redirect plugin to target version
-      become: true
-      command:
-        argv:
-          - dokku
-          - plugin:update
-          - redirect
-          - "{{ constructa_redirect_plugin_version }}"
-      register: constructa_redirect_update
-      changed_when: >-
-        constructa_redirect_update.stdout is defined and
-        ('already' not in (constructa_redirect_update.stdout | lower))
-      when:
-        - constructa_redirect_enabled | default(false) | bool
-        - constructa_redirect_plugin_repo is defined
-        - constructa_redirect_plugin_repo | length > 0
-        - constructa_redirect_plugin_version is defined
-        - constructa_redirect_plugin_version | length > 0
-        - constructa_redirect_installed is defined
-        - constructa_redirect_installed.rc == 0
-
-    - name: Check if Dokku letsencrypt plugin installed
-      become: true
-      command:
-        argv:
-          - dokku
-          - plugin:installed
-          - letsencrypt
-      register: constructa_letsencrypt_installed
-      changed_when: false
-      failed_when: constructa_letsencrypt_installed.rc not in [0, 1]
-      when:
-        - constructa_letsencrypt_plugin_repo is defined
-        - constructa_letsencrypt_plugin_repo | length > 0
-
-    - name: Install Dokku letsencrypt plugin when missing
-      become: true
-      command:
-        argv:
-          - dokku
-          - plugin:install
-          - "{{ constructa_letsencrypt_plugin_repo | default('https://github.com/dokku/dokku-letsencrypt.git') }}"
-          - --committish
-          - "{{ constructa_letsencrypt_plugin_version }}"
-      register: constructa_letsencrypt_install
-      when:
-        - constructa_letsencrypt_plugin_repo is defined
-        - constructa_letsencrypt_plugin_repo | length > 0
-        - constructa_letsencrypt_plugin_version is defined
-        - constructa_letsencrypt_plugin_version | length > 0
-        - constructa_letsencrypt_installed is defined
-        - constructa_letsencrypt_installed.rc != 0
-      changed_when: true
-
-    - name: Pin Dokku letsencrypt plugin to target version
-      become: true
-      command:
-        argv:
-          - dokku
-          - plugin:update
-          - letsencrypt
-          - "{{ constructa_letsencrypt_plugin_version }}"
-      register: constructa_letsencrypt_update
-      changed_when: >-
-        constructa_letsencrypt_update.stdout is defined and
-        ('already' not in (constructa_letsencrypt_update.stdout | lower))
-      when:
-        - constructa_letsencrypt_plugin_repo is defined
-        - constructa_letsencrypt_plugin_repo | length > 0
-        - constructa_letsencrypt_plugin_version is defined
-        - constructa_letsencrypt_plugin_version | length > 0
-        - constructa_letsencrypt_installed is defined
-        - constructa_letsencrypt_installed.rc == 0
-
-    - name: Ensure secondary domains exist
-      become: true
-      command:
-        argv:
-          - dokku
-          - domains:add
-          - "{{ constructa_app_name }}"
-          - "{{ item }}"
-      loop: "{{ constructa_redirect_domains | default([]) }}"
-      loop_control:
-        label: "{{ item }}"
-      when: constructa_redirect_enabled | default(false) | bool
-
-    - name: Redirect secondary domains to primary
-      become: true
-      command:
-        argv:
-          - dokku
-          - redirect:set
-          - "{{ constructa_app_name }}"
-          - "{{ item }}"
-          - "{{ constructa_primary_domain | default(constructa_domain) }}"
-      loop: "{{ constructa_redirect_domains | default([]) }}"
-      loop_control:
-        label: "{{ item }}"
-      register: constructa_redirect_result
-      changed_when: constructa_redirect_result.rc == 0
-      failed_when: constructa_redirect_result.rc not in [0, 1] or (constructa_redirect_result.rc == 1 and ('already redirected' not in (constructa_redirect_result.stderr | default('') | lower)) and ('already redirected' not in (constructa_redirect_result.stdout | default('') | lower)))
-      when: constructa_redirect_enabled | default(false) | bool
-
-    - name: Configure global LetsEncrypt email
-      become: true
-      command:
-        argv:
-          - dokku
-          - config:set
-          - --global
-          - "DOKKU_LETSENCRYPT_EMAIL={{ constructa_letsencrypt_email }}"
-      when:
-        - constructa_letsencrypt_email is defined
-        - constructa_letsencrypt_email | length > 0
-      tags: [env]
-
-    - name: Enable LetsEncrypt for app
-      become: true
-      command:
-        argv:
-          - dokku
-          - letsencrypt:enable
-          - "{{ constructa_app_name }}"
-      when:
-        - constructa_letsencrypt_email is defined
-        - constructa_letsencrypt_email | length > 0
-      tags: [env]
-
-    - name: Ensure LetsEncrypt cron job
-      become: true
-      command:
-        argv:
-          - dokku
-          - letsencrypt:cron-job
-          - --add
-      register: constructa_letsencrypt_cron
-      changed_when: >-
-        {{ 'Adding cron job' in (constructa_letsencrypt_cron.stdout | default('')) }}
-      failed_when: constructa_letsencrypt_cron.rc not in [0]
-      when:
-        - constructa_letsencrypt_email is defined
-        - constructa_letsencrypt_email | length > 0
-      tags: [env]
-
-    - name: Ensure host gateway docker option for deploy
-      become: true
-      shell: "dokku docker-options:add {{ constructa_app_name }} deploy '--add-host=host.docker.internal:host-gateway'"
-      register: dokku_add_deploy
-      failed_when: dokku_add_deploy.rc not in [0]
-      changed_when: dokku_add_deploy.stderr is defined and 'already exists' not in dokku_add_deploy.stderr
-
-    - name: Ensure host gateway docker option for run
-      become: true
-      shell: "dokku docker-options:add {{ constructa_app_name }} run '--add-host=host.docker.internal:host-gateway'"
-      register: dokku_add_run
-      failed_when: dokku_add_run.rc not in [0]
-      changed_when: dokku_add_run.stderr is defined and 'already exists' not in dokku_add_run.stderr
-
-    - name: Set Dokku config values
-      become: true
-      shell: >-
-        dokku config:set --no-restart {{ constructa_app_name }}
-        {{ item.key }}='{{ item.value }}'
-      loop: "{{ constructa_dokku_config | dict2items }}"
-      loop_control:
-        label: "{{ item.key }}"
-      tags: [env]
-
-    - name: Allow docker network access to compose service ports
-      become: true
-      command: >-
-        ufw allow from {{ constructa_docker_allowed_cidr | default('172.17.0.0/16') }}
-        to any port {{ item }} proto tcp
-      loop:
-        - 5432
-        - 9000
-        - 9001
-        - 6379
-        - 7700
-      register: ufw_allow_result
-      changed_when: "'Rule added' in ufw_allow_result.stdout"
-      failed_when: ufw_allow_result.rc not in [0]
-
+    # --- Optional Docker GC (unchanged behavior) ---
     - name: Install docker-gc script (optional)
       become: true
       copy:
