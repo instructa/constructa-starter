@@ -97,6 +97,3 @@ constructa_env:
   POLAR_PRODUCT_BUSINESS_MONTHLY: ''
   POLAR_PRODUCT_CREDITS_50: ''
   POLAR_PRODUCT_CREDITS_100: ''
-
-  # Frontend logging helpers
-  VITE_BROWSER_ECHO_ENABLED: 'false'
