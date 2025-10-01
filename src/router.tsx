@@ -6,7 +6,10 @@ import { NotFound } from './components/NotFound';
 import { routeTree } from './routeTree.gen';
 
 // Initialize browser-echo for TanStack Start (manual import required)
-if (import.meta.env.DEV && typeof window !== 'undefined') {
+const enableBrowserEcho =
+  import.meta.env.DEV || import.meta.env.VITE_BROWSER_ECHO_ENABLED === 'true';
+
+if (enableBrowserEcho && typeof window !== 'undefined') {
   void import('virtual:browser-echo');
 }
 

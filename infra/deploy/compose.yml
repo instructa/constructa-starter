@@ -1,244 +1,274 @@
-x-app-image: &app_image '${APP_IMAGE:-ghcr.io/your-org/your-repo/app}:${APP_TAG:-latest}'
-
 networks:
-  private:
-    internal: true
   edge:
     driver: bridge
-
+  private:
+    driver: bridge
 services:
-  # ---- Edge reverse proxy & TLS (ACME via Caddy) ----
-  caddy:
-    image: caddy:2.8.4-alpine
-    container_name: ex0-caddy
-    restart: unless-stopped
+  app:
+    build:
+      context: ./app-source
+      dockerfile: Dockerfile
+      target: runner
+    cap_drop:
+    - ALL
+    command:
+    - node
+    - .output/server/index.mjs
+    container_name: ex0-app
     depends_on:
-      - app
-    ports:
-      - "80:80"
-      - "443:443"
+      db:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      provision-minio:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    env_file:
+    - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?}
+      MEILI_API_KEY: ${MEILI_API_KEY:-${MEILI_MASTER_KEY}}
+      MEILI_HOST: ${MEILI_HOST:-http://meilisearch:7700}
+      NODE_ENV: production
+      PORT: 3000
+      REDIS_URL: redis://:${REDIS_PASSWORD:?}@redis:6379
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?}
+      S3_BUCKET: ${MINIO_BUCKET:?}
+      S3_ENABLE_PATH_STYLE: ${S3_ENABLE_PATH_STYLE:-1}
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?}
+    expose:
+    - '3000'
+    healthcheck:
+      interval: 10s
+      retries: 30
+      test:
+      - CMD
+      - wget
+      - -qO-
+      - http://localhost:3000/health
+      timeout: 3s
+    image: ${APP_IMAGE:-ghcr.io/your-org/your-repo/app}:${APP_TAG:-latest}
+    networks:
+    - private
+    read_only: true
+    restart: unless-stopped
+    security_opt:
+    - no-new-privileges:true
+    tmpfs:
+    - /tmp
+  caddy:
+    container_name: ex0-caddy
+    depends_on:
+    - app
+    env_file:
+    - .env
     environment:
       ACME_EMAIL: ${ACME_EMAIL:?}
       APP_HOSTNAME: ${APP_HOSTNAME:?}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks: [edge, private]
-
-  # ---- Application (Nitro output) ----
-  app:
-    image: *app_image
-    container_name: ex0-app
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-      meilisearch:
-        condition: service_healthy
-      provision-minio:
-        condition: service_completed_successfully
-      redis:
-        condition: service_healthy
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      DATABASE_URL: ${DATABASE_URL:?}
-      # S3 / Search / Queue (service-name endpoints)
-      S3_ENDPOINT: http://minio:9000
-      S3_REGION: ${S3_REGION:-us-east-1}
-      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?}
-      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?}
-      S3_BUCKET: ${MINIO_BUCKET:?}
-      S3_ENABLE_PATH_STYLE: ${S3_ENABLE_PATH_STYLE:-1}
-      MEILI_HOST: ${MEILI_HOST:-http://meilisearch:7700}
-      MEILI_API_KEY: ${MEILI_API_KEY:-${MEILI_MASTER_KEY}}
-      REDIS_URL: redis://:${REDIS_PASSWORD:?}@redis:6379
-      # Add any additional app env from .env (they will be inherited)
-    expose:
-      - "3000"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 30
-    security_opt:
-      - no-new-privileges:true
-    cap_drop: [ALL]
-    read_only: true
-    tmpfs:
-      - /tmp
-    command: ["node", ".output/server/index.mjs"]
-    networks: [private]
-
-  # ---- Postgres (internal) ----
-  db:
-    image: pgvector/pgvector:0.8.0-pg17
-    container_name: ex0-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:?}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
-      POSTGRES_DB: ${POSTGRES_DB:?}
-    volumes:
-      - ex0-data:/var/lib/postgresql/data
-    expose:
-      - "5432"
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
-      interval: 5s
-      timeout: 3s
-      retries: 20
-    networks: [private]
-
-  # ---- MinIO (S3) ----
-  # We keep host loopback bindings (127.0.0.1) to support SSH tunnels from your workstation.
-  minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-    container_name: ex0-minio
-    restart: unless-stopped
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
-    command: server /data --console-address ":9001"
-    volumes:
-      - ex0-minio-data:/data
+    image: caddy:2.10.2-alpine
+    networks:
+    - edge
+    - private
     ports:
-      - '127.0.0.1:9000:9000'
-      - '127.0.0.1:9001:9001'
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
-      interval: 5s
-      timeout: 3s
-      retries: 20
-    networks: [private]
-
-  # one-time bucket/policy provisioning; idempotent; safe to re-run
-  provision-minio:
-    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
-      mc mb --ignore-existing local/${MINIO_BUCKET} &&
-      mc anonymous set none local/${MINIO_BUCKET} || true
-      "
-    restart: 'no'
-    networks: [private]
-
-  # ---- Redis (internal) ----
-  redis:
-    image: redis:8.2.1-alpine
-    container_name: ex0-redis
+    - 80:80
+    - 443:443
     restart: unless-stopped
-    command:
-      - redis-server
-      - --save
-      - '60'
-      - '1'
-      - --loglevel
-      - warning
-      - --requirepass
-      - ${REDIS_PASSWORD:?}
     volumes:
-      - ex0-redis-data:/data
+    - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    - caddy_data:/data
+    - caddy_config:/config
+  db:
+    container_name: ex0-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_USER: ${POSTGRES_USER:?}
     expose:
-      - "6379"
+    - '5432'
     healthcheck:
-      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:?}', 'ping']
       interval: 5s
-      timeout: 3s
       retries: 20
-    networks: [private]
-
-  # ---- Meilisearch (internal) ----
-  meilisearch:
-    image: getmeili/meilisearch:v1.22.0
-    container_name: ex0-meili
+      test:
+      - CMD-SHELL
+      - pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}
+      timeout: 3s
+    image: pgvector/pgvector:0.8.0-pg17
+    networks:
+    - private
     restart: unless-stopped
+    volumes:
+    - ex0-data:/var/lib/postgresql/data
+  meilisearch:
+    container_name: ex0-meili
     environment:
       MEILI_ENV: production
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?changeme}
-    volumes:
-      - ex0-meili-data:/meili_data
     expose:
-      - "7700"
+    - '7700'
     healthcheck:
-      test: ['CMD', 'curl', '-sSf', 'http://localhost:7700/health']
       interval: 5s
-      timeout: 3s
       retries: 40
-    networks: [private]
-
-  # ---- Run DB migrations using app image ----
+      test:
+      - CMD
+      - curl
+      - -sSf
+      - http://localhost:7700/health
+      timeout: 3s
+    image: getmeili/meilisearch:v1.22.0
+    networks:
+    - private
+    restart: unless-stopped
+    volumes:
+    - ex0-meili-data:/meili_data
   migrate:
-    image: *app_image
+    build:
+      context: ./app-source
+      dockerfile: Dockerfile
+      target: runner
     depends_on:
       db:
         condition: service_healthy
+    entrypoint:
+    - pnpm
+    - exec
+    - drizzle-kit
+    - migrate
+    - --config
+    - drizzle.config.ts
+    env_file:
+    - .env
     environment:
       DATABASE_URL: ${DATABASE_URL:?}
       NODE_ENV: production
-    entrypoint:
-      - /bin/sh
-      - -lc
-      - cd /app && node node_modules/drizzle-kit/dist/index.js migrate
-    restart: 'no'
-    networks: [private]
-
-  # ---- Background worker (BullMQ) ----
-  worker:
-    image: *app_image
-    container_name: ex0-worker
+    image: ${APP_IMAGE:-ghcr.io/your-org/your-repo/app}:${APP_TAG:-latest}
+    networks:
+    - private
+    restart: "no"
+    working_dir: /app
+  minio:
+    command: server /data --console-address ":9001"
+    container_name: ex0-minio
+    environment:
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
+    healthcheck:
+      interval: 5s
+      retries: 20
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:9000/minio/health/live
+      timeout: 3s
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    networks:
+    - private
+    ports:
+    - 127.0.0.1:9000:9000
+    - 127.0.0.1:9001:9001
     restart: unless-stopped
+    volumes:
+    - ex0-minio-data:/data
+  provision-minio:
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: '/bin/sh -c " mc alias set local http://minio:9000 ${MINIO_ROOT_USER}
+      ${MINIO_ROOT_PASSWORD} && mc mb --ignore-existing local/${MINIO_BUCKET} && mc
+      anonymous set none local/${MINIO_BUCKET} || true "
+
+      '
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    networks:
+    - private
+    restart: "no"
+  redis:
+    command:
+    - redis-server
+    - --save
+    - '60'
+    - '1'
+    - --loglevel
+    - warning
+    - --requirepass
+    - ${REDIS_PASSWORD:?}
+    container_name: ex0-redis
+    expose:
+    - '6379'
+    healthcheck:
+      interval: 5s
+      retries: 20
+      test:
+      - CMD
+      - redis-cli
+      - -a
+      - ${REDIS_PASSWORD:?}
+      - ping
+      timeout: 3s
+    image: redis:8.2.1-alpine
+    networks:
+    - private
+    restart: unless-stopped
+    volumes:
+    - ex0-redis-data:/data
+  worker:
+    build:
+      context: ./app-source
+      dockerfile: Dockerfile
+      target: runner
+    cap_drop:
+    - ALL
+    command:
+    - /bin/sh
+    - -lc
+    - cd /app && node --import tsx/loader src/worker/index.ts
+    container_name: ex0-worker
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
       provision-minio:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    env_file:
+    - .env
     environment:
-      NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL:?}
-      # S3-compatible config to reach MinIO (service name)
-      S3_ENDPOINT: http://minio:9000
-      S3_REGION: ${S3_REGION:-us-east-1}
-      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?}
-      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?}
-      S3_BUCKET: ${MINIO_BUCKET:?}
-      S3_ENABLE_PATH_STYLE: ${S3_ENABLE_PATH_STYLE:-1}
-      S3_PREVIEW_URL_EXPIRE_IN: ${S3_PREVIEW_URL_EXPIRE_IN:-7200}
-      # Queue + schedules
-      REDIS_URL: redis://:${REDIS_PASSWORD:?}@redis:6379
       BULLMQ_PREFIX: ${BULLMQ_PREFIX:-constructa}
       DAILY_CREDIT_REFILL_CRON: ${DAILY_CREDIT_REFILL_CRON:-0 3 * * *}
-      JOB_DAILY_CREDIT_REFILL_URL: ${JOB_DAILY_CREDIT_REFILL_URL:-http://app:3000/api/jobs/daily-credit-refill}
+      DATABASE_URL: ${DATABASE_URL:?}
       JOBS_SECRET: ${JOBS_SECRET:-}
-      # Search
-      MEILI_HOST: ${MEILI_HOST:-http://meilisearch:7700}
+      JOB_DAILY_CREDIT_REFILL_URL: ${JOB_DAILY_CREDIT_REFILL_URL:-http://app:3000/api/jobs/daily-credit-refill}
       MEILI_API_KEY: ${MEILI_API_KEY:-${MEILI_MASTER_KEY}}
+      MEILI_HOST: ${MEILI_HOST:-http://meilisearch:7700}
+      NODE_ENV: production
+      REDIS_URL: redis://:${REDIS_PASSWORD:?}@redis:6379
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?}
+      S3_BUCKET: ${MINIO_BUCKET:?}
+      S3_ENABLE_PATH_STYLE: ${S3_ENABLE_PATH_STYLE:-1}
+      S3_ENDPOINT: http://minio:9000
+      S3_PREVIEW_URL_EXPIRE_IN: ${S3_PREVIEW_URL_EXPIRE_IN:-900}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?}
       SEARCH_REINDEX_ON_BOOT: ${SEARCH_REINDEX_ON_BOOT:-false}
-    command:
-      - /bin/sh
-      - -lc
-      - cd /app && node --import tsx/loader src/worker/index.ts
-    security_opt:
-      - no-new-privileges:true
-    cap_drop: [ALL]
+    image: ${APP_IMAGE:-ghcr.io/your-org/your-repo/app}:${APP_TAG:-latest}
+    networks:
+    - private
     read_only: true
+    restart: unless-stopped
+    security_opt:
+    - no-new-privileges:true
     tmpfs:
-      - /tmp
-    networks: [private]
-
+    - /tmp
 volumes:
-  caddy_data:
-  caddy_config:
-  ex0-data:
-  ex0-minio-data:
-  ex0-redis-data:
-  ex0-meili-data:
+  caddy_config: null
+  caddy_data: null
+  ex0-data: null
+  ex0-meili-data: null
+  ex0-minio-data: null
+  ex0-redis-data: null
+x-app-image: ${APP_IMAGE:-ghcr.io/your-org/your-repo/app}:${APP_TAG:-latest}

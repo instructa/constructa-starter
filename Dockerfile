@@ -1,14 +1,14 @@
 # ---- Stage 1: Build ----------------------------------------------------------
 FROM node:22-alpine AS builder
 
-# Slightly better compatibility on alpine
-RUN apk add --no-cache libc6-compat
+# Slightly better compatibility on alpine + TLS root store for outbound HTTPS
+RUN apk add --no-cache libc6-compat ca-certificates
 
 # Allow Vite build to use more memory inside the builder container
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Use pnpm
-RUN corepack enable && corepack prepare pnpm@9.14.4 --activate
+RUN corepack enable && corepack prepare pnpm@10.17.1 --activate
 
 WORKDIR /app
 
@@ -24,16 +24,17 @@ RUN pnpm run build
 # ---- Stage 2: Runtime --------------------------------------------------------
 FROM node:22-alpine AS runner
 
-RUN apk add --no-cache libc6-compat
-RUN corepack enable && corepack prepare pnpm@9.14.4 --activate
+RUN apk add --no-cache libc6-compat ca-certificates
+RUN npm install -g pnpm@10.17.1
 
 WORKDIR /app
-ENV NODE_ENV=production
 ENV PORT=5000
 
-# Install production dependencies only
+# Install runtime dependencies (keep dev tools for migrations/worker)
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --frozen-lockfile
+
+ENV NODE_ENV=production
 
 # Copy build output and runtime assets
 COPY --from=builder /app/.output ./.output

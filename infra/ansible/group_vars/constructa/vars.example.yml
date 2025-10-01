@@ -8,14 +8,20 @@
 
 constructa_deploy_dir: /opt/constructa
 
+# Optional Docker daemon DNS overrides (helps containers reach the Internet)
+# Leave empty to skip writing /etc/docker/daemon.json
+constructa_docker_dns_servers:
+  - '1.1.1.1'
+  - '8.8.8.8'
+
 # Sudo password for the deploy user (store encrypted via Vault)
 constructa_deploy_sudo_passwort: 'change-me-deploy-password'
 
 # Make Ansible escalate with the password above
 ansible_become: true
 ansible_become_method: sudo
-ansible_become_password: "{{ constructa_deploy_sudo_passwort }}"
-ansible_become_flags: "-SE"
+ansible_become_password: '{{ constructa_deploy_sudo_passwort }}'
+ansible_become_flags: '-SE'
 
 # Optional: login to image registry before pulling
 constructa_enable_registry_login: false
@@ -47,7 +53,8 @@ constructa_env:
   POSTGRES_USER: 'user'
   POSTGRES_PASSWORD: 'password'
   POSTGRES_DB: 'ex0'
-  DATABASE_URL: 'postgresql://user:password@db:5432/ex0'
+  POSTGRES_HOST: 'db'
+  POSTGRES_PORT: '5432'
 
   # MinIO/S3
   MINIO_ROOT_USER: 'minioadmin'
@@ -58,11 +65,10 @@ constructa_env:
   S3_SECRET_ACCESS_KEY: '${MINIO_ROOT_PASSWORD}'
   S3_BUCKET: '${MINIO_BUCKET}'
   S3_ENABLE_PATH_STYLE: '1'
-  S3_PREVIEW_URL_EXPIRE_IN: '7200'
+  S3_PREVIEW_URL_EXPIRE_IN: '900'
 
   # Redis / BullMQ
   REDIS_PASSWORD: 'change-me-redis-password'
-  REDIS_URL: 'redis://:${REDIS_PASSWORD}@redis:6379'
   BULLMQ_PREFIX: 'constructa'
   DAILY_CREDIT_REFILL_CRON: '0 3 * * *'
   JOB_DAILY_CREDIT_REFILL_URL: 'http://app:3000/api/jobs/daily-credit-refill'
@@ -91,3 +97,6 @@ constructa_env:
   POLAR_PRODUCT_BUSINESS_MONTHLY: ''
   POLAR_PRODUCT_CREDITS_50: ''
   POLAR_PRODUCT_CREDITS_100: ''
+
+  # Frontend logging helpers
+  VITE_BROWSER_ECHO_ENABLED: 'false'

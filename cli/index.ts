@@ -72,19 +72,46 @@ const checkDocker = () => {
 }
 
 type Remote = { host: string; user: string }
+type InventoryEntry = { host?: string; user?: string }
+
+const inventoryFiles = [
+  'infra/ansible/inventory/hosts.ini',
+  'infra/ansible/inventory/hosts.local.ini'
+]
+
+const loadInventoryEntries = (): Record<string, InventoryEntry> => {
+  const entries: Record<string, InventoryEntry> = {}
+  for (const file of inventoryFiles) {
+    if (!existsSync(file)) continue
+    const content = readFileSync(file, 'utf8')
+    for (const rawLine of content.split('\n')) {
+      const line = rawLine.trim()
+      if (!line || line.startsWith('#') || line.startsWith('[')) continue
+      const [name, ...rest] = line.split(/\s+/)
+      if (!name) continue
+      const data = entries[name] ?? {}
+      for (const kv of rest) {
+        const [key, value] = kv.split('=')
+        if (!key || typeof value === 'undefined') continue
+        if (key === 'ansible_host') data.host = value
+        if (key === 'ansible_user') data.user = value
+      }
+      entries[name] = data
+    }
+  }
+  return entries
+}
+
 const resolveRemote = (env: 'dev' | 'prod'): Remote => {
-  const invPath = 'infra/ansible/inventory/hosts.ini'
-  const inv = readFileSync(invPath, 'utf8')
   const name = `ex0-${env}`
-  const line = inv
-    .split('\n')
-    .map((l) => l.trim())
-    .find((l) => l.startsWith(name))
-  if (!line) throw new Error(`No inventory entry for ${name} in ${invPath}`)
-  const host = /ansible_host=([^\s]+)/.exec(line)?.[1]
-  const user = /ansible_user=([^\s]+)/.exec(line)?.[1] || 'deploy'
-  if (!host) throw new Error(`Missing ansible_host for ${name}`)
-  return { host, user }
+  const entries = loadInventoryEntries()
+  const entry = entries[name]
+  if (!entry?.host || entry.host === '<insert' || entry.host.includes(' ')) {
+    throw new Error(
+      `Missing ansible_host for ${name}. Fill hosts.local.ini with "${name} ansible_host=<ip> ansible_user=deploy".`
+    )
+  }
+  return { host: entry.host, user: entry.user ?? 'deploy' }
 }
 
 const getDataDir = () => {
@@ -416,6 +443,8 @@ const deployBranchCommand = defineCommand({
 })
 
 // ----- Logs & Restart on remote (defaults to dev) -----
+const composeFilePath = '/opt/constructa/compose.yml'
+
 const logsCommand = defineCommand({
   meta: { name: 'logs', description: 'Stream remote compose logs' },
   args: {
@@ -428,7 +457,8 @@ const logsCommand = defineCommand({
     const password = await getSudoPassword()
     const safeTail = Number.isFinite(args.tail) ? args.tail : 100
     const safeService = escapeSingleQuotes(args.service)
-    const command = `cd '/opt/constructa' && sudo -SE docker compose logs -f --tail=${safeTail} '${safeService}'`
+    const command =
+      `cd '/opt/constructa' && sudo -SE docker compose -f '${composeFilePath}' logs -f --tail=${safeTail} '${safeService}'`
     runRemote(remote, command, `Logs (${args.service})`, { sudo: true, password })
   }
 })
@@ -440,7 +470,8 @@ const restartCommand = defineCommand({
     const remote = resolveRemote(args.env as 'dev' | 'prod')
     const password = await getSudoPassword()
     const safeService = escapeSingleQuotes(args.service)
-    const command = `cd '/opt/constructa' && sudo -SE docker compose restart '${safeService}'`
+    const command =
+      `cd '/opt/constructa' && sudo -SE docker compose -f '${composeFilePath}' restart '${safeService}'`
     runRemote(remote, command, `Restart ${args.service}`, { sudo: true, password })
   }
 })

@@ -1,9 +1,11 @@
 {
-  email {env.ACME_EMAIL}
-  servers { protocols h1 h2 h3 }
+  email {$ACME_EMAIL}
+  servers {
+    protocols h1 h2 h3
+  }
 }
 
-{env.APP_HOSTNAME} {
+{$APP_HOSTNAME} {
   encode zstd gzip
   header {
     Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
@@ -14,7 +16,7 @@
   }
 
   @options method OPTIONS
-  handle @options { respond 204 }
+  respond @options 204
 
   reverse_proxy app:3000
 }

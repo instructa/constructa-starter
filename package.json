@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "vite dev",
-  "build": "vite build",
-  "heroku-postbuild": "pnpm run build",
+    "build": "vite build",
+    "heroku-postbuild": "pnpm run build",
     "start": "node .output/server/index.mjs",
     "worker": "node --import tsx/loader src/worker/index.ts",
     "search:sync": "node --import tsx/loader src/scripts/search-sync.ts",
@@ -139,5 +139,10 @@
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   },
-  "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  },
+  "packageManager": "pnpm@10.17.1"
 }

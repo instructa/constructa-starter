@@ -106,3 +106,5 @@ infra/ansible/group_vars/constructa/vars.yml
 *.tfstate
 *.tfstate.*
 *.tfstate.backup
+.ansible
+hosts.local.ini

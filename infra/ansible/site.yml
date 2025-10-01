@@ -14,16 +14,31 @@
         that:
           - constructa_env is defined
           - constructa_env | dict2items | length > 0
-        fail_msg: "Populate infra/ansible/group_vars/constructa/vars.yml (encrypt with Vault) before running the playbook."
+        fail_msg: 'Populate infra/ansible/group_vars/constructa/vars.yml (encrypt with Vault) before running the playbook.'
+
+    - name: Validate required database variables
+      assert:
+        that:
+          - "constructa_env.get('POSTGRES_USER', '') | length > 0"
+          - "constructa_env.get('POSTGRES_PASSWORD', '') | length > 0"
+          - "constructa_env.get('POSTGRES_DB', '') | length > 0"
+        fail_msg: 'POSTGRES_* variables are missing or empty in constructa_env.'
+
+    - name: Ensure derived URLs are not preset
+      assert:
+        that:
+          - constructa_env.DATABASE_URL is not defined
+          - constructa_env.REDIS_URL is not defined
+        fail_msg: 'Remove DATABASE_URL/REDIS_URL from constructa_env; they are constructed during deployment.'
 
     - name: Ensure compose directory exists
       become: true
       file:
-        path: "{{ constructa_deploy_dir }}"
+        path: '{{ constructa_deploy_dir }}'
         state: directory
         owner: "{{ ansible_user | default('deploy') }}"
         group: "{{ ansible_user | default('deploy') }}"
-        mode: "0755"
+        mode: '0755'
 
     # --- Optional swap management (kept from previous playbook) ---
     - name: Check for active swap
@@ -43,7 +58,7 @@
       become: true
       command: fallocate -l {{ constructa_swap_size }} {{ constructa_swap_file }}
       args:
-        creates: "{{ constructa_swap_file }}"
+        creates: '{{ constructa_swap_file }}'
       when:
         - constructa_swap_file is defined
         - constructa_swap_size is defined
@@ -52,14 +67,14 @@
     - name: Stat swapfile
       become: true
       stat:
-        path: "{{ constructa_swap_file }}"
+        path: '{{ constructa_swap_file }}'
       register: constructa_swap_stat
       when: constructa_swap_file is defined
 
     - name: Ensure swapfile permissions
       become: true
       file:
-        path: "{{ constructa_swap_file }}"
+        path: '{{ constructa_swap_file }}'
         owner: root
         group: root
         mode: '0600'
@@ -70,7 +85,7 @@
     - name: Ensure swapfile owned by root when already active
       become: true
       file:
-        path: "{{ constructa_swap_file }}"
+        path: '{{ constructa_swap_file }}'
         owner: root
         group: root
         mode: '0600'
@@ -108,26 +123,99 @@
         - (constructa_swap_matches | default(0) | int) == 0
 
   tasks:
-    - name: Sync compose bundle (excluding .env; rendered from Vault below)
+    - name: Configure Docker daemon DNS (optional)
       become: true
-      become_user: root
+      copy:
+        dest: /etc/docker/daemon.json
+        content: "{{ {'dns': constructa_docker_dns_servers | default([])} | to_nice_json }}\n"
+        owner: root
+        group: root
+        mode: '0644'
+      when: (constructa_docker_dns_servers | default([])) | length > 0
+      notify: Restart Docker
+      register: constructa_docker_daemon
+
+    - name: Remove Docker daemon override when DNS list empty
+      become: true
+      file:
+        path: /etc/docker/daemon.json
+        state: absent
+      when: (constructa_docker_dns_servers | default([])) | length == 0
+      notify: Restart Docker
+      register: constructa_docker_daemon_removed
+
+    - name: Apply pending Docker daemon changes immediately
+      meta: flush_handlers
+      when: (constructa_docker_daemon is defined and constructa_docker_daemon.changed) or
+            (constructa_docker_daemon_removed is defined and constructa_docker_daemon_removed.changed)
+
+    - name: Sync compose bundle (excluding .env; rendered from Vault below)
       ansible.posix.synchronize:
-        src: "{{ playbook_dir }}/../deploy/"
-        dest: "{{ constructa_deploy_dir }}/"
+        src: '{{ playbook_dir }}/../deploy/'
+        dest: '{{ constructa_deploy_dir }}/'
         delete: true
+        rsync_path: rsync
         rsync_opts:
-          - "--exclude=.env"
+          - '--exclude=.env'
+
+    - name: Ensure app-source directory exists
+      become: true
+      file:
+        path: '{{ constructa_deploy_dir }}/app-source'
+        state: directory
+        owner: '{{ ansible_user | default("deploy") }}'
+        group: '{{ ansible_user | default("deploy") }}'
+        mode: '0755'
+
+    - name: Sync application source (for on-host builds)
+      ansible.posix.synchronize:
+        src: '{{ playbook_dir }}/../../'
+        dest: '{{ constructa_deploy_dir }}/app-source/'
+        delete: true
+        rsync_path: rsync
+        rsync_opts:
+          - '--exclude=.git'
+          - '--exclude=node_modules'
+          - '--exclude=.turbo'
+          - '--exclude=dist'
+          - '--exclude=.ex0'
+          - '--exclude=.env'
+          - '--exclude=.env.*'
+          - '--exclude=infra/ansible'
+          - '--exclude=infra/hetzner/.terraform'
+          - '--exclude=infra/deploy/caddy_data'
+          - '--exclude=infra/deploy/caddy_config'
+        mode: push
+
+    - name: Build application image on host
+      become: true
+      command:
+        argv:
+          - docker
+          - compose
+          - -f
+          - compose.yml
+          - build
+          - app
+          - worker
+      args:
+        chdir: '{{ constructa_deploy_dir }}'
+      register: compose_build
+      changed_when: >-
+        'Successfully built' in (compose_build.stdout | default('')) or
+        'Successfully tagged' in (compose_build.stdout | default('')) or
+        'built' in (compose_build.stderr | default(''))
 
     - name: Render compose env file from Vault values
       become: true
       template:
         src: templates/.env.j2
-        dest: "{{ constructa_deploy_dir }}/.env"
-        mode: "0600"
+        dest: '{{ constructa_deploy_dir }}/.env'
+        mode: '0600'
         owner: "{{ ansible_user | default('deploy') }}"
         group: "{{ ansible_user | default('deploy') }}"
       vars:
-        env_map: "{{ constructa_env }}"
+        env_map: '{{ constructa_env }}'
       tags: [env]
 
     - name: Docker login to registry (optional)
@@ -151,7 +239,7 @@
           - redis
           - meilisearch
       args:
-        chdir: "{{ constructa_deploy_dir }}"
+        chdir: '{{ constructa_deploy_dir }}'
       register: compose_core
       changed_when: >-
         'Creating' in compose_core.stdout or
@@ -170,7 +258,7 @@
           - --rm
           - provision-minio
       args:
-        chdir: "{{ constructa_deploy_dir }}"
+        chdir: '{{ constructa_deploy_dir }}'
       register: provision_minio
       changed_when: false
       failed_when:
@@ -188,7 +276,7 @@
           - --rm
           - migrate
       args:
-        chdir: "{{ constructa_deploy_dir }}"
+        chdir: '{{ constructa_deploy_dir }}'
       register: migrate_result
       changed_when: true
 
@@ -206,19 +294,46 @@
           - caddy
           - worker
       args:
-        chdir: "{{ constructa_deploy_dir }}"
+        chdir: '{{ constructa_deploy_dir }}'
       register: compose_up
       changed_when: >-
         'Creating' in compose_up.stdout or
         'Starting' in compose_up.stdout or
         'Recreating' in compose_up.stdout
 
+    # - name: Install daily database backup cron
+    #   become: true
+    #   cron:
+    #     name: 'Daily database backup'
+    #     minute: '0'
+    #     hour: '2'
+    #     job: "cd {{ constructa_deploy_dir }} && docker compose exec -T db sh -c 'PGPASSWORD=${POSTGRES_PASSWORD} pg_dump -U ${POSTGRES_USER} -d ${POSTGRES_DB} --no-owner --no-acl' | gzip > {{ constructa_deploy_dir }}/backups/db_backup_$(date +\\%Y\\%m\\%d_\\%H\\%M\\%S).sql.gz"
+    #     user: "{{ ansible_user | default('deploy') }}"
+
+    # - name: Create backups directory
+    #   become: true
+    #   file:
+    #     path: '{{ constructa_deploy_dir }}/backups'
+    #     state: directory
+    #     owner: "{{ ansible_user | default('deploy') }}"
+    #     group: "{{ ansible_user | default('deploy') }}"
+    #     mode: '0700'
+
+    # - name: Install backup cleanup cron
+    #   become: true
+    #   cron:
+    #     name: 'Cleanup old backups'
+    #     minute: '30'
+    #     hour: '2'
+    #     job: "find {{ constructa_deploy_dir }}/backups -name 'db_backup_*.sql.gz' -type f -mtime +7 -delete"
+    #     user: "{{ ansible_user | default('deploy') }}"
+
     # --- Optional Docker GC (unchanged behavior) ---
     - name: Install docker-gc script (optional)
       become: true
       copy:
         dest: /usr/local/bin/docker-gc.sh
-        mode: "0755"
+        mode: '0755'
         content: |
           #!/usr/bin/env bash
           set -euo pipefail
@@ -232,7 +347,7 @@
       become: true
       copy:
         dest: /etc/systemd/system/docker-gc.service
-        mode: "0644"
+        mode: '0644'
         content: |
           [Unit]
           Description=Docker image/build cache garbage collection
@@ -246,7 +361,7 @@
       become: true
       copy:
         dest: /etc/systemd/system/docker-gc.timer
-        mode: "0644"
+        mode: '0644'
         content: |
           [Unit]
           Description=Run Docker GC periodically
@@ -268,3 +383,10 @@
         enabled: true
         state: started
       when: constructa_enable_docker_gc | default(false) | bool
+
+  handlers:
+    - name: Restart Docker
+      become: true
+      systemd:
+        name: docker
+        state: restarted
