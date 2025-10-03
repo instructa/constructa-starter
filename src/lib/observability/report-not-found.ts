@@ -12,7 +12,7 @@ export async function reportRouteNotFound(meta: NotFoundMetadata) {
       href: meta.href ?? null,
     };
 
-    if (typeof window === 'undefined') {
+    if (import.meta.env.SSR) {
       const { Sentry } = await import('./sentry.server');
       if (Sentry?.captureMessage) {
         Sentry.captureMessage('Router 404', (scope) => {

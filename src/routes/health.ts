@@ -1,13 +1,20 @@
-/**
- * Minimal healthcheck endpoint for Dokku.
- * Responds with 200 and a small JSON body.
- */
-export async function GET() {
-  return new Response(JSON.stringify({ status: 'ok' }), {
-    headers: { 'content-type': 'application/json; charset=utf-8' },
-    status: 200,
-  });
-}
+import { createFileRoute } from '@tanstack/react-router';
 
-// Optional: treat HEAD like GET (fast path for some checkers)
-export const HEAD = GET;
+const jsonOk = () =>
+  Response.json(
+    { status: 'ok' },
+    {
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+      status: 200,
+    },
+  );
+
+export const Route = createFileRoute('/health')({
+  component: () => null,
+  server: {
+    handlers: {
+      GET: jsonOk,
+      HEAD: () => new Response(null, { status: 200 }),
+    },
+  },
+});
