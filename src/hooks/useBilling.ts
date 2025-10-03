@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
 
-import { CREDIT_PACK_PRODUCTS, PLANS } from '~/config/plans';
+import { CREDIT_PACK_PRODUCTS } from '~/config/plans';
 import { authClient } from '~/lib/auth-client';
+import { isClient } from '~/lib/environment';
 import { getBillingInfo as getBillingInfoFn } from '~/server/function/billing-info.server';
 
 type PolarClientResponse<T> = {
@@ -63,6 +64,16 @@ export function useStartCheckout() {
 
       if (error || !data?.url) {
         throw new Error(error?.message ?? 'Checkout failed');
+      }
+
+      if (isClient) {
+        const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        try {
+          window.sessionStorage.setItem('billing:returnTo', currentHref);
+          window.sessionStorage.setItem('billing:returnTo:ts', Date.now().toString());
+        } catch {
+          // sessionStorage may be unavailable (Safari private mode etc.)
+        }
       }
 
       await router.navigate({

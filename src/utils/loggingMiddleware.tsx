@@ -33,11 +33,11 @@ export const logMiddleware = createMiddleware()
     const durationToServer = responseContext.durationToServer ?? 0
 
     // Console for local dev
-    console.log('Client Req/Res:', {
-      duration: clientTime.getTime() - now.getTime(),
-      durationToServer,
-      durationFromServer: now.getTime() - serverTime.getTime(),
-    })
+    // console.log('Client Req/Res:', {
+    //   duration: clientTime.getTime() - now.getTime(),
+    //   durationToServer,
+    //   durationFromServer: now.getTime() - serverTime.getTime(),
+    // })
 
     // Add Sentry breadcrumb (client)
     try {
@@ -63,10 +63,10 @@ export const logMiddleware = createMiddleware()
     try {
       const res = await ctx.next()
       const end = Date.now()
-      logger.info('serverFn', {
-        phase: 'complete',
-        durationMs: end - start,
-      })
+      // logger.info('serverFn', {
+      //   phase: 'complete',
+      //   durationMs: end - start,
+      // })
 
       // Breadcrumb (server)
       try {

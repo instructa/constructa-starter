@@ -24,6 +24,8 @@ stack (Postgres, Redis, MinIO, Meilisearch, Mailhog) so the app is ready to go.
 - `pnpm run ex0 -- gc` – prune Docker images/volumes managed by the project.
 - `pnpm run ex0 -- testdata <subcommand>` – generate or clear demo data (see
   interactive prompts for choices).
+- `pnpm run ex0 -- polar seed-plans` – upsert billing plans from Polar/config into
+  the database after plan changes.
 
 ### Deployments
 

@@ -3,12 +3,6 @@ import { eq } from 'drizzle-orm';
 import { polarEnv } from '~/conf/polar';
 import { addPurchasedCredits, resetMonthlyAllotment } from '~/server/credits';
 import { ensureOrderInvoice, upsertPolarCustomerByExternalId } from '~/server/polar';
-import { seedPlans } from '~/server/seed-plans';
-
-await seedPlans().catch((error) => {
-  console.error('[polar webhook] failed to seed plans', error);
-  throw error;
-});
 import { db } from '~/db/db-config';
 import { invoices, subscriptions } from '~/db/schema/billing.schema';
 import { PLANS, type PlanId } from '~/config/plans';

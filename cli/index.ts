@@ -643,6 +643,21 @@ const testdataCommand = defineCommand({
   }
 })
 
+const polarSeedPlansCommand = defineCommand({
+  meta: { name: 'seed-plans', description: 'Upsert Polar billing plans into the database' },
+  async run() {
+    runCommand('node --import tsx/loader cli/scripts/seed-plans.ts', 'Seed Polar plans')
+  }
+})
+
+const polarCommand = defineCommand({
+  meta: { name: 'polar', description: 'Polar billing utilities' },
+  subCommands: { 'seed-plans': polarSeedPlansCommand },
+  async run() {
+    await polarSeedPlansCommand.run({ args: {}, options: {}, rawArgs: [] })
+  }
+})
+
 const main = defineCommand({
   meta: { name: 'cli', version: '2.0.0', description: 'Project management CLI (Compose-first, Vault-aware)' },
   subCommands: {
@@ -663,6 +678,7 @@ const main = defineCommand({
     // tunnels/services
     tunnel: tunnelCommand,
     services: servicesCommand,
+    polar: polarCommand,
     // vault helpers
     vault: vaultCommand
   }

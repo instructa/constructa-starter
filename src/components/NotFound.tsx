@@ -1,6 +1,19 @@
-import { Link } from "@tanstack/react-router"
+import { useEffect } from "react";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { reportRouteNotFound } from "~/lib/observability/report-not-found";
 
 export function NotFound({ children }: { children?: any }) {
+    const location = useRouterState({ select: (state) => state.location });
+
+    useEffect(() => {
+        if (!location) return;
+        void reportRouteNotFound({
+            pathname: location.pathname,
+            search: typeof window !== "undefined" ? window.location.search : null,
+            href: typeof window !== "undefined" ? window.location.href : location.href,
+        });
+    }, [location?.href, location?.pathname]);
+
     return (
         <div className="space-y-2 p-2">
             <div className="text-gray-600 dark:text-gray-400">
@@ -21,5 +34,5 @@ export function NotFound({ children }: { children?: any }) {
                 </Link>
             </p>
         </div>
-    )
+    );
 }
