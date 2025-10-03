@@ -1,5 +1,3 @@
-TanStack DB in 60 seconds (token-tight)
-
 What it is
 
 * Reactive client store extending TanStack Query with collections, live queries, optimistic mutations; uni-directional data flow; live queries via d2ts (incremental, sub-ms).
