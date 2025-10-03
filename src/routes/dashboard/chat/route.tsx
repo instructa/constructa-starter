@@ -36,7 +36,7 @@ function RouteComponent() {
     <div className="container mx-auto h-full px-4">
       <div className="flex h-full flex-col gap-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Chat Assistant</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Coding Assistant</h1>
           <p className="text-muted-foreground">
             Ask the repository-aware assistant for help with code or docs.
           </p>
@@ -81,15 +81,13 @@ function AssistantChatSurface({ files }: { files: ChatLoaderData['files'] }) {
       <div className={cn('flex flex-1 flex-col gap-4 aui-root', scopeClass)}>
         <AvailableFiles files={files} />
         <ThreadPrimitive.Root className="flex flex-1 flex-col">
-          <ThreadPrimitive.Viewport
-            autoScroll
-            className="flex-1 space-y-4 overflow-y-auto pr-1"
-          >
+          <ThreadPrimitive.Viewport autoScroll className="flex-1 space-y-4 overflow-y-auto pr-1">
             <ThreadPrimitive.Empty>
               <div className="flex h-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                 <p>Ask the assistant about any file stored in your MinIO bucket.</p>
                 <p className="text-xs">
-                  Tip: mention paths like <code className="font-mono text-xs">src/lib/api.ts</code> to fetch exact files.
+                  Tip: mention paths like <code className="font-mono text-xs">src/lib/api.ts</code>{' '}
+                  to fetch exact files.
                 </p>
               </div>
             </ThreadPrimitive.Empty>
@@ -197,7 +195,8 @@ function AvailableFiles({ files }: { files: ChatLoaderData['files'] }) {
         ) : null}
       </div>
       <span className="text-[11px] text-muted-foreground">
-        Tip: tag a file by mentioning its key (for example, <code>{displayFiles[0]?.key ?? 'src/example.ts'}</code>).
+        Tip: tag a file by mentioning its key (for example,{' '}
+        <code>{displayFiles[0]?.key ?? 'src/example.ts'}</code>).
       </span>
     </div>
   );
