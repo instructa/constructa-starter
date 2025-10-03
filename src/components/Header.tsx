@@ -1,8 +1,33 @@
 import { SignedIn, SignedOut } from '@daveyplate/better-auth-ui';
 import { Link } from '@tanstack/react-router';
+import * as Sentry from '@sentry/react';
+import { useCallback } from 'react';
+import { ClientOnly } from './client-only';
 import { ModeToggle } from './mode-toggle';
 import { Button } from './ui/button';
-import { ClientOnly } from './client-only';
+
+function DevSentryButton() {
+  const handleClick = useCallback(() => {
+    const err = new Error('Manual Sentry test (client)')
+    console.info('[sentry] dispatching manual client error for verification')
+    Sentry.captureException(err)
+  }, [])
+
+  if (!import.meta.env.DEV) return null
+
+  return (
+    <ClientOnly fallback={null}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleClick}
+        className="text-xs"
+      >
+        Test Sentry
+      </Button>
+    </ClientOnly>
+  )
+}
 
 export function Header() {
   return (
@@ -61,6 +86,8 @@ export function Header() {
           <ClientOnly fallback={<div className="w-6" />}>
             <ModeToggle />
           </ClientOnly>
+
+          <DevSentryButton />
 
           <SignedOut>
             <Link to="/auth/$pathname" params={{ pathname: 'sign-in' }}>

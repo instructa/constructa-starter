@@ -1,3 +1,5 @@
+import '~/lib/observability/sentry.server'
+
 import IORedis from 'ioredis'
 import { Worker, Queue, QueueEvents, JobsOptions } from 'bullmq'
 import { runDailyCreditRefill } from './processors/dailyCreditRefill.ts'

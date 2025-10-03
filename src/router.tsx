@@ -6,9 +6,9 @@ import { NotFound } from './components/NotFound';
 import { routeTree } from './routeTree.gen';
 
 // Initialize browser-echo for TanStack Start (manual import required)
-if (import.meta.env.DEV && typeof window !== 'undefined') {
-  void import('virtual:browser-echo');
-}
+// if (import.meta.env.DEV && typeof window !== 'undefined') {
+//   void import('virtual:browser-echo');
+// }
 
 export function getRouter() {
   const queryClient = new QueryClient();
