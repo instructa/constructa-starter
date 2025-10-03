@@ -2,6 +2,7 @@ import '~/lib/observability/sentry.server'
 
 import IORedis from 'ioredis'
 import { Worker, Queue, QueueEvents, JobsOptions } from 'bullmq'
+import { logger } from '~/lib/logger'
 import { runDailyCreditRefill } from './processors/dailyCreditRefill.ts'
 import { reindexDocuments } from './processors/reindexDocuments.ts'
 
@@ -19,24 +20,26 @@ const worker = new Worker(
   async (job) => {
     switch (job.name) {
       case 'daily-credit-refill':
+        logger.info('[worker] running daily-credit-refill')
         return runDailyCreditRefill()
       case 'reindex-all':
+        logger.info('[worker] running reindex-all job')
         return reindexDocuments()
       default:
-        console.log(`[worker] Unknown job "${job.name}" - ignoring`)
+        logger.warn(`[worker] Unknown job "${job.name}" - ignoring`)
     }
   },
   { connection, prefix }
 )
 
-worker.on('ready', () => console.log('[worker] ready'))
-worker.on('error', (err) => console.error('[worker] error', err))
+worker.on('ready', () => logger.info('[worker] ready'))
+worker.on('error', (err) => logger.error('[worker] error', { error: err }))
 
 // Events
 const events = new QueueEvents(queueName, { connection, prefix })
-events.on('completed', ({ jobId }) => console.log(`[worker] completed ${jobId}`))
+events.on('completed', ({ jobId }) => logger.info('[worker] completed job', { jobId }))
 events.on('failed', ({ jobId, failedReason }) =>
-  console.error(`[worker] failed ${jobId}: ${failedReason}`)
+  logger.error('[worker] job failed', { jobId, error: failedReason })
 )
 
 // Bootstrap schedules + optional reindex
@@ -48,13 +51,13 @@ events.on('failed', ({ jobId, failedReason }) =>
   if (!has) {
     const opts: JobsOptions = { repeat: { pattern: cron }, jobId: 'daily-credit-refill' }
     await queue.add('daily-credit-refill', {}, opts)
-    console.log('[worker] scheduled daily-credit-refill with', cron)
+    logger.info('[worker] scheduled daily-credit-refill', { cron })
   }
 
   if (process.env.SEARCH_REINDEX_ON_BOOT === 'true') {
     await queue.add('reindex-all', {}, { jobId: `reindex-${Date.now()}` })
-    console.log('[worker] queued reindex-all on boot')
+    logger.info('[worker] queued reindex-all on boot')
   }
 })().catch((e) => {
-  console.error('[worker] bootstrap error', e)
+  logger.error('[worker] bootstrap error', { error: e })
 })

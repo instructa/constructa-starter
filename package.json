@@ -70,6 +70,7 @@
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@sentry/core": "^8.55.0",
     "@sentry/node": "^8.55.0",
     "@sentry/react": "^8.55.0",
     "@t3-oss/env-core": "^0.13.8",

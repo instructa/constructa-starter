@@ -8,25 +8,20 @@ import { Button } from './ui/button';
 
 function DevSentryButton() {
   const handleClick = useCallback(() => {
-    const err = new Error('Manual Sentry test (client)')
-    console.info('[sentry] dispatching manual client error for verification')
-    Sentry.captureException(err)
-  }, [])
+    const err = new Error(`Manual Sentry test (client) ${new Date().toISOString()}`);
+    console.info('[sentry] dispatching manual client error for verification');
+    Sentry.captureException(err);
+  }, []);
 
-  if (!import.meta.env.DEV) return null
+  // if (!import.meta.env.DEV) return null
 
   return (
     <ClientOnly fallback={null}>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleClick}
-        className="text-xs"
-      >
+      <Button variant="outline" size="sm" onClick={handleClick} className="text-xs">
         Test Sentry
       </Button>
     </ClientOnly>
-  )
+  );
 }
 
 export function Header() {
