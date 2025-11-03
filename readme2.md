@@ -1,22 +1,22 @@
-# Connect your tools (3)
+# Verbinden Sie Ihre Tools (3)
 
-Integrations turn Linear into your source of truth around product development. Keep data in sync, and eliminate manual updates between tools.
+Integrationen machen Linear zu Ihrer zentralen Informationsquelle f?r die Produktentwicklung. Halten Sie Daten synchron und eliminieren Sie manuelle Aktualisierungen zwischen Tools.
 
 ![connect-your-tools.png](https://uploads.linear.app/fe63b3e2-bf87-46c0-8784-cd7d639287c8/c2eae035-37e2-4754-adcb-b8305431aa1f/c92d70c7-e6d0-4fa2-a0fd-78f6e780993a)
 
-### **Key integrations**
+### **Wichtige Integrationen**
 
 * [**Slack**](https://linear.app/settings/integrations/slack)
-  Create issues from Slack messages and sync threads
+  Erstellen Sie Issues aus Slack-Nachrichten und synchronisieren Sie Threads
 * [**GitHub**](https://linear.app/settings/integrations/github)** / **[**GitLab**](https://linear.app/settings/integrations/gitlab)
-  Automate your pull request, commit workflows, and keep issues synced both ways
+  Automatisieren Sie Ihre Pull-Request- und Commit-Workflows und halten Sie Issues bidirektional synchron
 * [**Agents**](https://linear.app/integrations/agents)
-  Deploy AI agents that work alongside you as teammates
+  Setzen Sie KI-Agenten ein, die als Teammitglieder an Ihrer Seite arbeiten
 
-### **Browse all integrations**
+### **Alle Integrationen durchsuchen**
 
-Discover 150+ available connections in our [integration directory](https://linear.app/integrations) ? from bug creation via support tools (Intercom, Zendesk), to issues created from design explorations (Figma).
+Entdecken Sie ?ber 150 verf?gbare Verbindungen in unserem [Integrationsverzeichnis](https://linear.app/integrations) ? von der Bug-Erstellung ?ber Support-Tools (Intercom, Zendesk) bis hin zu Issues, die aus Design-Explorationen erstellt werden (Figma).
 
 ### **Linear API**
 
-If you need something more custom, you can build directly on the Linear API (built on GraphQL). [See our Dev Docs to learn more](https://linear.app/developers).
+Wenn Sie etwas Individuelleres ben?tigen, k?nnen Sie direkt auf der Linear API (basierend auf GraphQL) aufbauen. [Weitere Informationen finden Sie in unserer Entwicklerdokumentation](https://linear.app/developers).
