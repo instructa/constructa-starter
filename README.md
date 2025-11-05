@@ -9,6 +9,8 @@
   <p>Optimized for coding with AI assistants • Powered by <a href="https://instructa.ai">instructa.ai</a></p>
 </div>
 
+> 🌍 **Documentación disponible en español** - [README en Español](README.es.md) | [Documentación en Español](docs/es/)
+
 > ⚠️ **Work in Progress** - This starter kit is currently under active development. Features and documentation may change frequently.
 
 
