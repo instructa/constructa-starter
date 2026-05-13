@@ -3,6 +3,7 @@
 *.local
 .DS_Store
 .cache
+.ck/
 .env
 .env.development
 .env.local
@@ -12,6 +13,8 @@
 .mastra
 .nitro
 .output
+.ruler/
+.spezi/
 .tanstack
 .tanstack-start
 .vercel
@@ -25,6 +28,7 @@
 /server/build
 /test-results/
 (gen)
+codefetch/
 dist
 dist-ssr
 node_modules
