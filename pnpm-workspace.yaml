@@ -1,0 +1,25 @@
+packages:
+  - .
+
+minimumReleaseAge: 10080
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+blockExoticSubdeps: true
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 43200
+dangerouslyAllowAllBuilds: false
+savePrefix: ""
+strictDepBuilds: true
+overrides:
+  better-sqlite3: 12.9.0
+allowBuilds:
+  '@parcel/watcher': true
+  '@prisma/client': false
+  '@tailwindcss/oxide': true
+  better-sqlite3: true
+  core-js: false
+  esbuild: true
+  msgpackr-extract: false
+  msw: false
+  protobufjs: false
+  unrs-resolver: true
