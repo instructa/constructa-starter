@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   test: {
     globals: true,
-    environment: "jsdom",
+    environment: "node",
     setupFiles: "./tests/setup.ts",
     coverage: {
       reporter: ["text", "html"]

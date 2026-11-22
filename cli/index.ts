@@ -219,10 +219,7 @@ const initCommand = defineCommand({
       console.log(green('✅ Better Auth schema files already exist'))
     } else {
       try {
-        runCommand(
-          'npx -y @better-auth/cli@latest generate --config src/server/auth.ts --output src/server/db/auth.schema.ts',
-          'Generate Better Auth schema'
-        )
+        runCommand('pnpm auth:init', 'Generate Better Auth schema')
       } catch (error) {
         if (existsSync(authSchemaPath)) {
           console.log(yellow('⚠️ Better Auth CLI reported an error, but schema file was created successfully'))
