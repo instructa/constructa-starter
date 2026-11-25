@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { reactStartCookies } from 'better-auth/react-start';
+import { tanstackStartCookies } from 'better-auth/tanstack-start';
 import { magicLink } from 'better-auth/plugins';
 import { Polar } from '@polar-sh/sdk';
 import { polar, checkout, portal, webhooks } from '@polar-sh/better-auth';
@@ -76,7 +76,6 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    reactStartCookies(),
     magicLink({
       async sendMagicLink({ email, url }) {
         await sendEmail({
@@ -111,6 +110,7 @@ export const auth = betterAuth({
         }),
       ],
     }),
+    tanstackStartCookies(),
   ],
   emailAndPassword: {
     enabled: true,
