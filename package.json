@@ -103,7 +103,7 @@
     "meilisearch": "0.41.0",
     "motion": "12.23.18",
     "nitro": "npm:nitro-nightly@3.0.0-20250925-102916-440c34dc",
-    "nodemailer": "7.0.6",
+    "nodemailer": "10.1.4",
     "postgres": "3.4.7",
     "react": "19.1.1",
     "react-dom": "19.1.1",
